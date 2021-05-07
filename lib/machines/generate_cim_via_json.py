@@ -207,6 +207,26 @@ def find_input_cells(spreadsheet_tab):
     return label_to_input_cell_mapping
 
 
+def extract_inputs_at_input_cells(input_cells, spreadsheet_tab):
+    """TODO."""
+    values = []
+    if not isinstance(input_cells, list):
+        input_cells = [input_cells]
+    for index, input_cell in enumerate(input_cells):
+        user_input = spreadsheet_tab.cell(
+            row=input_cell, column=INPUT_COLUMN + 1).value
+
+        # Distinguish from Falsy values e.g. False and 0 as user input
+        if user_input is None:
+            # Use a placeholder/default that is unlikely to be specified
+            # (not None, False, etc.) to avoid potential clash with any
+            # user input, for keeping track of input cells left empty.
+            values.append(EMPTY_CELL_MARKER)
+        else:
+            values.append(str(user_input))
+    return values
+
+
 def convert_tab_to_json(spreadsheet_tab):
     """TODO."""
     all_input_cells = find_input_cells(spreadsheet_tab)
@@ -226,20 +246,8 @@ def convert_tab_to_json(spreadsheet_tab):
             else:  # else store the value, which may (rarely) be string "None"!
                 final_json[label] = str(user_input)
         else:
-            values = []
-            for index, input_cell in enumerate(input_cell_or_cells):
-                user_input = spreadsheet_tab.cell(
-                    row=input_cell, column=INPUT_COLUMN + 1).value
-
-                # Distinguish from Falsy values e.g. False and 0 as user input
-                if user_input is None:
-                    # Use a placeholder/default that is unlikely to be specified
-                    # (not None, False, etc.) to avoid potential clash with any
-                    # user input, for keeping track of input cells left empty.
-                    values.append(EMPTY_CELL_MARKER)
-                else:
-                    values.append(str(user_input))
-            final_json[label] = values
+            final_json[label] = extract_inputs_at_input_cells(
+                input_cell_or_cells, spreadsheet_tab)
 
     return json.dumps(final_json, indent=4)
 
@@ -257,9 +265,10 @@ def generate_cim(machines_spreadsheet):
     tabs = get_machine_tabs(machines_spreadsheet)
     for machine_tab in tabs:
         print("CONVERTING TAB:", machine_tab)
-        json = convert_tab_to_json(machine_tab)
-        print("JSON IS:", json)
-        cim = convert_json_to_cim(json)
+        json_out = convert_tab_to_json(machine_tab)
+        assert json.loads(json_out)  # quick check that it is valid JSON!
+        print("JSON IS:", json_out)
+        cim = convert_json_to_cim(json_out)
         print("CIM IS:")
         pprint.pprint(cim)
         cim_outputs.append(cim)
