@@ -2,7 +2,7 @@
 .. module:: generate_cim_via_json.py
    :license: GPL/CeCIL
    :platform: Unix, Windows
-   :synopsis: Initialises CMIP6 machines spreadsheets.
+   :synopsis: Converts CMIP6 machine spreadsheets to CIM via intermediate JSON.
 
 .. moduleauthor::
    Sadie Bartholomew <sadie.bartholomew@ncas.ac.uk>
