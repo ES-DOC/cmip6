@@ -18,7 +18,9 @@ function _main()
 	fi
 
 	pushd "$CMIP6_HOME" || exit
-	pipenv run python "$CMIP6_HOME"/lib/models/archive_cim_documents.py --destination="$ARCHIVE_FOLDER" --institution-id="$INSTITUTION"
+	pipenv run python "$CMIP6_HOME"/lib/models/archive_cim_documents.py \
+		--destination="$ARCHIVE_FOLDER" \
+		--institution-id="$INSTITUTION"
 	popd || exit
 }
 

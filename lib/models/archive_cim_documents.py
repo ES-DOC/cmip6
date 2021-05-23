@@ -41,7 +41,7 @@ def _main(args):
 
     """
     if not os.path.exists(args.dest):
-        raise ValueError("Destination folder is invalid")
+        raise ValueError("Destination folder is invalid: {}".format(args.dest))
 
     for institute, source_id in vocabs.yield_sources(args.institution_id):
         _copy_files(args.dest, institute, source_id)

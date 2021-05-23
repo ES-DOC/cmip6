@@ -22,7 +22,7 @@ _ARGS = argparse.ArgumentParser("Generates CMIP6 model comparator files.")
 _ARGS.add_argument(
     "--destination",
     help="Folder to which CIM documents will be copied.",
-    default="/Users/a-0/Engineering/ipsl/esdoc/repos/core/esdoc-web-explorer/src/static/cmip6-comparator",
+    default=os.path.join(os.getenv('CMIP6_HOME'), 'repos/libs/esdoc-web-explorer/src/static/cmip6-comparator')
     dest="destination",
     type=str
     )

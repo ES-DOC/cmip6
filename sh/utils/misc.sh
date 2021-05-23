@@ -1,5 +1,20 @@
 #!/usr/bin/env bash
 
+# Activates associated virtual environment.
+cmip6_venv_activate()
+{
+	pushd "$CORDEX_HOME" || exit
+	export PYTHONPATH=$CMIP6_HOME:$PYTHONPATH
+	export PYTHONPATH=$CMIP6_HOME/repos/libs/esdoc-py-client:$PYTHONPATH
+	export PYTHONPATH=$CMIP6_HOME/repos/libs/pyessv:$PYTHONPATH
+}
+
+# Deactivates associated virtual environment.
+cmip6_venv_deactivate()
+{
+	popd || exit
+}
+
 # Wraps standard echo.
 function log()
 {

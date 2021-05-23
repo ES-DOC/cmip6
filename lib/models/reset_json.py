@@ -32,7 +32,7 @@ def _main(args):
     """
     for institution in vocabs.get_institutes(args.institution_id):
         for source_id in vocabs.get_institute_sources(institution):
-            folder = io_mgr.get_model_folder(institution, source_id, 'cim')
+            folder = io_mgr.get_model_folder(institution, source_id, 'json')
             shutil.rmtree(folder)
             os.makedirs(folder)
 

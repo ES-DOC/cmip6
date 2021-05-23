@@ -10,6 +10,14 @@ export CMIP6_HOME="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Ensure target scripts are executable.
 chmod a+x "$CMIP6_HOME"/sh/*/*.sh
 
+# Set archives.
+if [ -d "$CMIP6_HOME/repos/archives/esdoc-archive" ]; then
+	source "$CMIP6_HOME/repos/archives/esdoc-archive/sh/activate"
+fi
+if [ -d "$CMIP6_HOME/repos/archives/pyessv-archive" ]; then
+	export PYESSV_ARCHIVE_HOME="$CMIP6_HOME/repos/archives/pyessv-archive"
+fi
+
 # Set python path.
 export PYTHONPATH=$CMIP6_HOME:$PYTHONPATH
 
@@ -30,9 +38,10 @@ function exec_cmd()
 	local CMD_SCRIPT=${2}
 	local CMD_TARGET="$CMIP6_HOME"/sh/"$CMD_SCRIPT"
 
+	cmip6_venv_activate
+
 	log_banner
 	log "$CMD_TYPE :: BEGINS"
-	activate_venv
 	log_banner
 
 	if [ "$3" ] && [ "$4" ] && [ "$5" ]; then
@@ -48,6 +57,8 @@ function exec_cmd()
 	log_banner
 	log "$CMD_TYPE :: ENDS"
 	log_banner
+
+	cmip6_venv_deactivate
 }
 
 # --------------------------------------------------------------------

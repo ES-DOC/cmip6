@@ -43,11 +43,11 @@ def _main(args):
     for i, s, t in vocabs.yield_topics(args.institution_id):
         try:
             wb = _get_spreadsheet(i, s, t)
-        except IOError:
+        except IOError:            
             warning = '{} :: {} :: {} :: spreadsheet not found'
             warning = warning.format(i.canonical_name, s.canonical_name, t.canonical_name)
             logger.log_warning(warning)
-            continue
+            continue        
 
         # Set JSON content.
         content = _get_content(i, s, t, wb)
