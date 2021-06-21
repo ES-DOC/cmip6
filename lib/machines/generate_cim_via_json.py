@@ -10,6 +10,7 @@
 """
 
 import json
+import os
 import pprint
 
 from openpyxl import load_workbook
@@ -145,8 +146,7 @@ def get_machine_tabs(spreadsheet):
          if sheet.title not in ("Frontis", "Example"):
              all_machine_tabs.append(sheet)
 
-    # TODO, TEMP: remove this bodge to use example tab as an easy test
-    return [spreadsheet["Example"]]
+    return all_machine_tabs
 
 
 def find_input_cells(spreadsheet_tab):
@@ -185,11 +185,19 @@ def find_input_cells(spreadsheet_tab):
                     else:  # not contiguous multiple input cells, other case
                         offsets = case.split("+")
 
+                    # Institutes may, against advice, have left some
+                    # experiment input cells blank to indicate no applicable
+                    # experiments by MIP, so to cater for these cases, replace
+                    # empty values with 'NONE'
+                    if label.startswith("1.9.2.") and not offsets:
+                        offsets = [1]
+
                     # Now add the multiple offsets as a list, then move on:
                     label_to_input_cell_mapping[label] = [
                         row[INPUT_COLUMN].row + int(offset)
                         for offset in offsets
                     ]
+
                     break
 
                 # Otherwise it is a simple offset, apply it:
@@ -197,12 +205,13 @@ def find_input_cells(spreadsheet_tab):
                 label_to_input_cell_mapping[label] = input_box_row
                 break
 
-        # Remove inapplicable MIPs and experiments:
+        # Remove inapplicable numbers for MIPs and experiments:
         if not label_to_input_cell_mapping.get(label, False):
             if label.startswith("1.9.2.") or label.startswith("1.8.2."):
-                # Skip these special cases for now
+                # Numbers not valid in this case, too few objects, so it
+                # we can just skip these...
                 # TODO: sort this later
-                print("Inapplicable model or MIP question skipped:", label)
+                print("Inapplicable model or MIP number skipped:", label)
 
     return label_to_input_cell_mapping
 
@@ -227,9 +236,29 @@ def extract_inputs_at_input_cells(input_cells, spreadsheet_tab):
     return values
 
 
+def get_top_cell_model_or_exp_name(input_cells, spreadsheet_tab):
+    """TODO.
+
+    In all such cases, the model or experiment name is at an offset of
+    zero above the first input cell, i.e. directly above it, so note the
+    logic here relies on this so must be adapated to generalise further.
+
+    """
+    if not isinstance(input_cells, list):
+        input_cells = [input_cells]
+    print("INPUT CELLS ARE:", input_cells)
+    lowest_row_input_cell = min(input_cells)
+    print("USING CELL:", lowest_row_input_cell - 1, INPUT_COLUMN + 1)
+    name = spreadsheet_tab.cell(
+        row=lowest_row_input_cell - 1, column=INPUT_COLUMN + 1).value
+
+    return name
+
+
 def convert_tab_to_json(spreadsheet_tab):
     """TODO."""
     all_input_cells = find_input_cells(spreadsheet_tab)
+    print("ALL INPUT CELLS ARE:",  all_input_cells)
 
     final_json = {}
     for label, input_cell_or_cells in all_input_cells.items():
@@ -244,7 +273,28 @@ def convert_tab_to_json(spreadsheet_tab):
                 # user input, for keeping track of input cells left empty.
                 final_json[label] = EMPTY_CELL_MARKER
             else:  # else store the value, which may (rarely) be string "None"!
-                final_json[label] = str(user_input)
+                # For cases where questions are populated based on institute
+                # specific values (e.g. applicable models and exps questions),
+                # also note these values for validation
+                if label.startswith("1.8.2."):
+                    name = get_top_cell_model_or_exp_name(
+                        input_cell_or_cells, spreadsheet_tab)
+                    final_json[label] = {name: str(user_input)}
+                else:
+                    final_json[label] = str(user_input)
+        elif label.startswith("1.9.2."):
+            if not spreadsheet_tab.cell(
+                row=input_cell_or_cells[0], column=INPUT_COLUMN + 1).value:
+                # Institutes may, against advice, have left some
+                # experiment input cells blank to indicate no applicable
+                # experiments by MIP, so to cater for these cases, replace
+                # empty values with 'NONE'
+                final_json[label] = "NONE"
+            else:
+                name = get_top_cell_model_or_exp_name(
+                    input_cell_or_cells, spreadsheet_tab)  # TODO issue here
+                final_json[label] = {name: extract_inputs_at_input_cells(
+                    input_cell_or_cells, spreadsheet_tab)}
         else:
             final_json[label] = extract_inputs_at_input_cells(
                 input_cell_or_cells, spreadsheet_tab)
@@ -279,7 +329,9 @@ def generate_cim(machines_spreadsheet):
 # Main entry point.
 if __name__ == '__main__':
     # Locate and open template
-    spreadsheet_path = "templates/machines.xlsx"  # TODO, TEMP: for testing
+    spreadsheet_path = os.path.join(
+        "test-machine-sheets", "ipsl_real_submission.xlsx"
+        )  # TODO, TEMP: for testing
     open_spreadsheet = load_workbook(filename=spreadsheet_path)
 
     # Extract CIM
