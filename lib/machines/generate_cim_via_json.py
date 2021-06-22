@@ -11,7 +11,7 @@
 
 import json
 import os
-import pprint
+from pprint import pprint
 
 from openpyxl import load_workbook
 
@@ -33,7 +33,7 @@ MAX_NUMBER_MIPS = 22  # TODO: replace with inst-specific value
 # inputs, e.g. (1, 1, 1) -> question "1.1.1" or "1.1.1 *", values are offsets,
 # where a "SPECIAL CASE:" string value indicates extra rows may have been
 # created by the user, and is to be dealt with on a case-by-case basis:
-input_labels = {
+WS_QUESTIONS_TO_INPUT_CELLS_MAPPING = {
     # Identity:
     (1, 1, 1): 2,
     (1, 1, 2): 5,
@@ -125,14 +125,20 @@ input_labels = {
     # All (1, 9, 2, N) is processed in below
 }
 
-# Extend the list with any potential labels for the questions:
-applicable_models_q2 = {
-    (1, 8, 2, N): 1 for N in range(
-        1, MAX_NUMBER_MODELS_PER_INSTITUTE)
-}
-applicable_experiments_q2 = {
-    (1, 9, 2, N): "SPECIAL CASE: 1+" for N in range(1, MAX_NUMBER_MIPS)}
-input_labels.update({**applicable_models_q2, **applicable_experiments_q2})
+
+def get_ws_questions_to_input_cells_mapping():
+    input_labels = WS_QUESTIONS_TO_INPUT_CELLS_MAPPING.copy()
+    # Extend the list with any potential labels for the questions:
+    applicable_models_q2 = {
+        (1, 8, 2, N): 1 for N in range(
+            1, MAX_NUMBER_MODELS_PER_INSTITUTE)
+    }
+    input_labels.update(applicable_models_q2)
+    applicable_experiments_q2 = {
+        (1, 9, 2, N): "SPECIAL CASE: 1+" for N in range(1, MAX_NUMBER_MIPS)}
+    input_labels.update(applicable_experiments_q2)
+
+    return input_labels
 
 
 def get_machine_tabs(spreadsheet):
@@ -149,7 +155,7 @@ def get_machine_tabs(spreadsheet):
     return all_machine_tabs
 
 
-def find_input_cells(spreadsheet_tab):
+def find_input_cells(spreadsheet_tab, input_labels):
     """TODO."""
     label_values = {
         ".".join(str(subsec) for subsec in label): offset for label, offset in
@@ -210,8 +216,8 @@ def find_input_cells(spreadsheet_tab):
             if label.startswith("1.9.2.") or label.startswith("1.8.2."):
                 # Numbers not valid in this case, too few objects, so it
                 # we can just skip these...
-                # TODO: sort this later
                 print("Inapplicable model or MIP number skipped:", label)
+
 
     return label_to_input_cell_mapping
 
@@ -246,21 +252,19 @@ def get_top_cell_model_or_exp_name(input_cells, spreadsheet_tab):
     """
     if not isinstance(input_cells, list):
         input_cells = [input_cells]
-    print("INPUT CELLS ARE:", input_cells)
     lowest_row_input_cell = min(input_cells)
-    print("USING CELL:", lowest_row_input_cell - 1, INPUT_COLUMN + 1)
     name = spreadsheet_tab.cell(
         row=lowest_row_input_cell - 1, column=INPUT_COLUMN + 1).value
 
     return name
 
 
-def convert_tab_to_json(spreadsheet_tab):
+def convert_tab_to_dict(spreadsheet_tab):
     """TODO."""
-    all_input_cells = find_input_cells(spreadsheet_tab)
-    print("ALL INPUT CELLS ARE:",  all_input_cells)
+    all_input_cells = find_input_cells(
+        spreadsheet_tab, get_ws_questions_to_input_cells_mapping())
 
-    final_json = {}
+    final_dict = {}
     for label, input_cell_or_cells in all_input_cells.items():
         if not isinstance(input_cell_or_cells, list):
             user_input = spreadsheet_tab.cell(
@@ -271,7 +275,7 @@ def convert_tab_to_json(spreadsheet_tab):
                 # Use a placeholder/default that is unlikely to be specified
                 # (not None, False, etc.) to avoid potential clash with any
                 # user input, for keeping track of input cells left empty.
-                final_json[label] = EMPTY_CELL_MARKER
+                final_dict[label] = EMPTY_CELL_MARKER
             else:  # else store the value, which may (rarely) be string "None"!
                 # For cases where questions are populated based on institute
                 # specific values (e.g. applicable models and exps questions),
@@ -279,9 +283,17 @@ def convert_tab_to_json(spreadsheet_tab):
                 if label.startswith("1.8.2."):
                     name = get_top_cell_model_or_exp_name(
                         input_cell_or_cells, spreadsheet_tab)
-                    final_json[label] = {name: str(user_input)}
+                    final_dict[label] = {name: str(user_input)}
                 else:
-                    final_json[label] = str(user_input)
+                    try:
+                        final_dict[label] = str(user_input)
+                    except:
+                        # Python 2 only unicode-escape
+                        print(
+                            "WARNING: Python 2 only unicode issue with:",
+                            label
+                        )
+                        final_dict[label] = user_input
         elif label.startswith("1.9.2."):
             if not spreadsheet_tab.cell(
                 row=input_cell_or_cells[0], column=INPUT_COLUMN + 1).value:
@@ -289,41 +301,42 @@ def convert_tab_to_json(spreadsheet_tab):
                 # experiment input cells blank to indicate no applicable
                 # experiments by MIP, so to cater for these cases, replace
                 # empty values with 'NONE'
-                final_json[label] = "NONE"
+                final_dict[label] = "NONE"
             else:
                 name = get_top_cell_model_or_exp_name(
                     input_cell_or_cells, spreadsheet_tab)  # TODO issue here
-                final_json[label] = {name: extract_inputs_at_input_cells(
+                final_dict[label] = {name: extract_inputs_at_input_cells(
                     input_cell_or_cells, spreadsheet_tab)}
         else:
-            final_json[label] = extract_inputs_at_input_cells(
+            final_dict[label] = extract_inputs_at_input_cells(
                 input_cell_or_cells, spreadsheet_tab)
 
-    return json.dumps(final_json, indent=4)
+    return final_dict
 
 
-def convert_json_to_cim(json):
+def convert_intermediate_dict_to_cim(json):
     """TODO."""
-    final_cim = None
-    return final_cim
+    std_json = None
+    return std_json
 
 
-def generate_cim(machines_spreadsheet):
+def generate_cim_outputs(machines_spreadsheet):
     """TODO."""
-    cim_outputs = []
+    machine_cim_outputs = []
 
     tabs = get_machine_tabs(machines_spreadsheet)
     for machine_tab in tabs:
-        print("CONVERTING TAB:", machine_tab)
-        json_out = convert_tab_to_json(machine_tab)
-        assert json.loads(json_out)  # quick check that it is valid JSON!
-        print("JSON IS:", json_out)
-        cim = convert_json_to_cim(json_out)
+        print("CONVERTING TAB:")
+        pprint(machine_tab)
+        dict_out = convert_tab_to_dict(machine_tab)
+        print("INTERMEDIATE DICT IS:")
+        pprint(dict_out)
+        cim = convert_intermediate_dict_to_cim(dict_out)
         print("CIM IS:")
-        pprint.pprint(cim)
-        cim_outputs.append(cim)
+        pprint(cim)
+        machine_cim_outputs.append(cim)
 
-    return cim_outputs
+    return machine_cim_outputs
 
 
 # Main entry point.
@@ -331,11 +344,11 @@ if __name__ == '__main__':
     # Locate and open template
     spreadsheet_path = os.path.join(
         "test-machine-sheets", "ipsl_real_submission.xlsx"
-        )  # TODO, TEMP: for testing
+    )  # TODO, TEMP: for testing
     open_spreadsheet = load_workbook(filename=spreadsheet_path)
 
     # Extract CIM
-    cim_outputs = generate_cim(open_spreadsheet)
+    cim_outputs = generate_cim_outputs(open_spreadsheet)
 
     # Close template
     open_spreadsheet.close()
