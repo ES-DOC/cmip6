@@ -15,6 +15,9 @@ from pprint import pprint
 
 from openpyxl import load_workbook
 
+import pyesdoc
+from pyesdoc.ontologies.cim import v2 as cim
+
 
 LABEL_COLUMN = 0  # i.e. index in A-Z of columns as tuple, so "A"
 INPUT_COLUMN = 1  # i.e. "B"
@@ -397,6 +400,30 @@ def generate_cim_outputs(machines_spreadsheet):
         machine_cim_outputs.append(cim)
 
     return machine_cim_outputs
+
+
+def init_machine_cim():
+    """TODO."""
+    # Define the overall document which will be populated below
+    machine_cim = pyesdoc.create(cim.Machine, **KWARGS)
+
+    # First-level properties, being their own platform classes
+    partition_cim = pyesdoc.create(cim.Partition, **KWARGS)
+
+    # Create two compute pools and storage pools, since the machine
+    # spreadsheet assumption was that there would be no more than two of
+    # either of these. If only one of either is described, the other is
+    # removed later when it becomes known to not be applicable.
+    compute_pools_cim_1 = pyesdoc.create(cim.ComputePool, **KWARGS)
+    compute_pools_cim_2 = pyesdoc.create(cim.ComputePool, **KWARGS)
+    storage_pools_cim_1 = pyesdoc.create(cim.StoragePool, **KWARGS)
+    storage_pools_cim_2 = pyesdoc.create(cim.StoragePool, **KWARGS)
+
+    # Connect the first-level properties to the top-level machine document
+    machine_cim.partition = partition_cim
+    machine_cim.compute_pools = [compute_pools_cim_1, compute_pools_cim_2]
+    machine_cim.storage_pools = [storage_pools_cim_1, storage_pools_cim_2]
+    return machine_cim
 
 
 # Main entry point.
