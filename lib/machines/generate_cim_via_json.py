@@ -125,6 +125,66 @@ WS_QUESTIONS_TO_INPUT_CELLS_MAPPING = {
     # All (1, 9, 2, N) is processed in below
 }
 
+INSTITUTE = "an institute"  # TODO: hook up to CLI
+KWARGS = {
+    "project": "CMIP6",
+    "source": "spreadsheet",
+    "version": 1,
+    "institute": INSTITUTE
+}
+
+QUESTIONS_TO_CIM_MAPPING = {
+    # Identity:
+    (1, 1, 1): ("name",),
+    (1, 1, 2): ("partition", "name"),
+    # General properties:
+    (1, 2, 1): ("institution",),
+    (1, 2, 2): ("description",),
+    (1, 2, 3): ("online_documentation",),
+    (1, 2, 4): ("when_used",),
+    # Vendor information:
+    (1, 3, 1): ("vendor",),
+    (1, 3, 2): ("model_number",),
+    # Compute pools...
+    # Compute pool 1:
+    (1, 4, 1, 1): ("compute_pools", "name"),
+    (1, 4, 1, 2): ("compute_pools", "description"),
+    (1, 4, 1, 4): ("compute_pools", "model_number"),
+    (1, 4, 1, 5): ("compute_pools", "number_of_nodes"),
+    (1, 4, 1, 6): ("compute_pools", "memory_per_node"),
+    (1, 4, 1, 7): ("compute_pools", "compute_cores_per_node"),
+    (1, 4, 1, 9): ("compute_pools", "accelerators_per_node"),
+    (1, 4, 1, 10): ("compute_pools", "accelerator_type"),
+    (1, 4, 1, 11): ("compute_pools", "cpu_type"),
+    (1, 4, 1, 12): ("compute_pools", "clock_speed"),
+    (1, 4, 1, 13): ("compute_pools", "clock_cycle_concurrency"),
+    # Compute pool 2:
+    (1, 4, 2, 1): ("compute_pools", "name"),
+    (1, 4, 2, 2): ("compute_pools", "description"),
+    (1, 4, 2, 4): ("compute_pools", "model_number"),
+    (1, 4, 2, 5): ("compute_pools", "number_of_nodes"),
+    (1, 4, 2, 6): ("compute_pools", "memory_per_node"),
+    (1, 4, 2, 7): ("compute_pools", "compute_cores_per_node"),
+    (1, 4, 2, 9): ("compute_pools", "accelerators_per_node"),
+    (1, 4, 2, 10): ("compute_pools", "accelerator_type"),
+    (1, 4, 2, 11): ("compute_pools", "cpu_type"),
+    (1, 4, 2, 12): ("compute_pools", "clock_speed"),
+    (1, 4, 2, 13): ("compute_pools", "clock_cycle_concurrency"),
+    # Storage pools...
+    # Storage pool 1:
+    (1, 5, 1, 1): ("storage_pools", "name"),
+    (1, 5, 1, 3): ("storage_pools", "description"),
+    (1, 5, 1, 4): ("storage_pools", "type"),
+    (1, 5, 1, 5): ("storage_pools", "vendor"),
+    # Storage pool 2:
+    (1, 5, 2, 1): ("storage_pools", "name"),
+    (1, 5, 2, 3): ("storage_pools", "description"),
+    (1, 5, 2, 4): ("storage_pools", "type"),
+    (1, 5, 2, 5): ("storage_pools", "vendor"),
+    # Interconnect:
+    (1, 6, 1): ("compute_pools", "interconnect"),
+}
+
 
 def get_ws_questions_to_input_cells_mapping():
     input_labels = WS_QUESTIONS_TO_INPUT_CELLS_MAPPING.copy()
