@@ -377,31 +377,6 @@ def convert_tab_to_dict(spreadsheet_tab):
     return final_dict
 
 
-def convert_intermediate_dict_to_cim(json):
-    """TODO."""
-    std_json = None
-    return std_json
-
-
-def generate_cim_outputs(machines_spreadsheet):
-    """TODO."""
-    machine_cim_outputs = []
-
-    tabs = get_machine_tabs(machines_spreadsheet)
-    for machine_tab in tabs:
-        print("CONVERTING TAB:")
-        pprint(machine_tab)
-        dict_out = convert_tab_to_dict(machine_tab)
-        print("INTERMEDIATE DICT IS:")
-        pprint(dict_out)
-        cim = convert_intermediate_dict_to_cim(dict_out)
-        print("CIM IS:")
-        pprint(cim)
-        machine_cim_outputs.append(cim)
-
-    return machine_cim_outputs
-
-
 def init_machine_cim():
     """TODO."""
     # Define the overall document which will be populated below
@@ -481,11 +456,44 @@ def map_question_inputs_to_machine_cim(inputs_by_question_number_json):
     return machine_doc
 
 
+def convert_intermediate_dict_to_cim(intermediate_dict):
+    """TODO."""
+    return map_question_inputs_to_machine_cim(intermediate_dict)
+
+
+def generate_cim_outputs(machines_spreadsheet):
+    """TODO."""
+    machine_cim_outputs = []
+
+    tabs = get_machine_tabs(machines_spreadsheet)
+    for machine_tab in tabs:
+        print("CONVERTING TAB:")
+        pprint(machine_tab)
+        dict_out = convert_tab_to_dict(machine_tab)
+        print("INTERMEDIATE DICT IS:")
+        pprint(dict_out)
+        cim = convert_intermediate_dict_to_cim(dict_out)
+        print("CIM IS:")
+        pprint(cim)
+
+        print("\n*** INSPECT MACHINE CIM DOC TO CHECK IT LOOKS OK ***\n")
+        pprint(cim.__dict__)
+        pprint(cim.partition.__dict__)
+        pprint(cim.compute_pools[0].__dict__)
+        pprint(cim.compute_pools[1].__dict__)
+        pprint(cim.storage_pools[0].__dict__)
+        pprint(cim.storage_pools[1].__dict__)
+
+        machine_cim_outputs.append(cim)
+
+    return machine_cim_outputs
+
+
 # Main entry point.
 if __name__ == '__main__':
     # Locate and open template
     spreadsheet_path = os.path.join(
-        "test-machine-sheets", "ipsl_real_submission.xlsx"
+        "test-machine-sheets", "cmcc_real_submission.xlsx"
     )  # TODO, TEMP: for testing
     open_spreadsheet = load_workbook(filename=spreadsheet_path)
 
