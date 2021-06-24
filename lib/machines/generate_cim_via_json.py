@@ -426,6 +426,61 @@ def init_machine_cim():
     return machine_cim
 
 
+def map_question_inputs_to_machine_cim(inputs_by_question_number_json):
+    """TODO."""
+    # 1. Filter out inputs where no value was specified, by marker
+    submitted_inputs = {
+        q_no: val for q_no, val in inputs_by_question_number_json.items() if
+        val != EMPTY_CELL_MARKER
+    }
+
+    # 2. Inititate machine CIM document
+    machine_doc = init_machine_cim()
+
+    # 3. Chnage tuple of int question numebr labels to dot-delimited string
+    questions_to_cim_mapping_str = {
+        ".".join([str(int) for int in q_no]): val for q_no, val in
+        QUESTIONS_TO_CIM_MAPPING.items()
+    }
+
+    # 4. Match submitted questions to their corresponding machine CIM
+    #    components and set them accordingly on the document object
+    for q_no, q_answer in submitted_inputs.items():
+        if q_no in questions_to_cim_mapping_str:
+            corr_cim_comp = questions_to_cim_mapping_str[q_no]
+            level = len(corr_cim_comp)
+
+            # a) Top level comps
+            if level == 1:
+                setattr(machine_doc, corr_cim_comp[0], q_answer)
+            elif level == 2:  # b) second-level comps e.g. storage pool
+                level_1_comp, level_2_comp = corr_cim_comp
+
+                # Special cases where need to set on one of two list values
+                if level_1_comp in ("compute_pools", "storage_pools"):
+                    # Determine if this is the first or second pool, as can
+                    # indicated by the third value in the question number
+                    # (1 -> first => Python index 0, etc.)
+                    pool_index = int(str(q_no.split(".")[2])) - 1
+                    # Set the value on the correct pool in the length-two list
+                    setattr(
+                        getattr(machine_doc, level_1_comp)[pool_index],
+                        level_2_comp, q_answer
+                    )
+                else:
+                    setattr(
+                        getattr(machine_doc, level_1_comp),
+                        level_2_comp, q_answer
+                    )
+            else:
+                ValueError(
+                    "Machine CIM should not be more than two levels deep."
+                )
+
+    # 4. Return completed machine CIM document - passed through anyway...
+    return machine_doc
+
+
 # Main entry point.
 if __name__ == '__main__':
     # Locate and open template
