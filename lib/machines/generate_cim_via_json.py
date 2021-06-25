@@ -19,6 +19,8 @@ import pyesdoc
 from pyesdoc.ontologies.cim import v2 as cim
 
 
+PRINT_WARNINGS = False
+
 LABEL_COLUMN = 0  # i.e. index in A-Z of columns as tuple, so "A"
 INPUT_COLUMN = 1  # i.e. "B"
 
@@ -145,6 +147,7 @@ QUESTIONS_TO_CIM_MAPPING = {
     (1, 2, 2): ("description",),
     (1, 2, 3): ("online_documentation",),
     (1, 2, 4): ("when_used",),
+    ### (1, 2, 5): ("operating_system",),  # TODO CIM V2.0 -> V2.2
     # Vendor information:
     (1, 3, 1): ("vendor",),
     (1, 3, 2): ("model_number",),
@@ -152,10 +155,21 @@ QUESTIONS_TO_CIM_MAPPING = {
     # Compute pool 1:
     (1, 4, 1, 1): ("compute_pools", "name"),
     (1, 4, 1, 2): ("compute_pools", "description"),
+    ### (1, 4, 1, 3): ("compute_pools", "vendor"),  # TODO CIM V2.0 -> V2.2
     (1, 4, 1, 4): ("compute_pools", "model_number"),
     (1, 4, 1, 5): ("compute_pools", "number_of_nodes"),
     (1, 4, 1, 6): ("compute_pools", "memory_per_node"),
     (1, 4, 1, 7): ("compute_pools", "compute_cores_per_node"),
+    # TODO CIM V2.0 -> V2.2, NIC component:
+    ### (1, 4, 1, 8, 1, 1): ("compute_pools", "nic", "name"),
+    ### (1, 4, 1, 8, 1, 2): ("compute_pools", "nic", "bandwidth"),
+    ### (1, 4, 1, 8, 1, 3): ("compute_pools", "nic", "vendor"),
+    ### (1, 4, 1, 8, 2, 1): ("compute_pools", "nic", "name"),
+    ### (1, 4, 1, 8, 2, 2): ("compute_pools", "nic", "bandwidth"),
+    ### (1, 4, 1, 8, 2, 3): ("compute_pools", "nic", "vendor"),
+    ### (1, 4, 1, 8, 3, 1): ("compute_pools", "nic", "name"),
+    ### (1, 4, 1, 8, 3, 2): ("compute_pools", "nic", "bandwidth"),
+    ### (1, 4, 1, 8, 3, 3): ("compute_pools", "nic", "vendor"),
     (1, 4, 1, 9): ("compute_pools", "accelerators_per_node"),
     (1, 4, 1, 10): ("compute_pools", "accelerator_type"),
     (1, 4, 1, 11): ("compute_pools", "cpu_type"),
@@ -164,10 +178,21 @@ QUESTIONS_TO_CIM_MAPPING = {
     # Compute pool 2:
     (1, 4, 2, 1): ("compute_pools", "name"),
     (1, 4, 2, 2): ("compute_pools", "description"),
+    ###(1, 4, 2, 3): ("compute_pools", "vendor"),  # TODO CIM V2.0 -> V2.2
     (1, 4, 2, 4): ("compute_pools", "model_number"),
     (1, 4, 2, 5): ("compute_pools", "number_of_nodes"),
     (1, 4, 2, 6): ("compute_pools", "memory_per_node"),
     (1, 4, 2, 7): ("compute_pools", "compute_cores_per_node"),
+    # TODO CIM V2.0 -> V2.2, NIC component:
+    ### (1, 4, 2, 8, 1, 1): ("compute_pools", "nic", "name"),
+    ### (1, 4, 2, 8, 1, 2): ("compute_pools", "nic", "bandwidth"),
+    ### (1, 4, 2, 8, 1, 3): ("compute_pools", "nic", "vendor"),
+    ### (1, 4, 2, 8, 2, 1): ("compute_pools", "nic", "name"),
+    ### (1, 4, 2, 8, 2, 2): ("compute_pools", "nic", "bandwidth"),
+    ### (1, 4, 2, 8, 2, 3): ("compute_pools", "nic", "vendor"),
+    ### (1, 4, 2, 8, 3, 1): ("compute_pools", "nic", "name"),
+    ### (1, 4, 2, 8, 3, 2): ("compute_pools", "nic", "bandwidth"),
+    ### (1, 4, 2, 8, 3, 3): ("compute_pools", "nic", "vendor"),
     (1, 4, 2, 9): ("compute_pools", "accelerators_per_node"),
     (1, 4, 2, 10): ("compute_pools", "accelerator_type"),
     (1, 4, 2, 11): ("compute_pools", "cpu_type"),
@@ -176,16 +201,28 @@ QUESTIONS_TO_CIM_MAPPING = {
     # Storage pools...
     # Storage pool 1:
     (1, 5, 1, 1): ("storage_pools", "name"),
+    # TODO CIM V2.0 -> V2.2:
+    ### (1, 5, 1, 2): ("storage_pools", "file_system_sizes"),
     (1, 5, 1, 3): ("storage_pools", "description"),
     (1, 5, 1, 4): ("storage_pools", "type"),
     (1, 5, 1, 5): ("storage_pools", "vendor"),
     # Storage pool 2:
     (1, 5, 2, 1): ("storage_pools", "name"),
+    # TODO CIM V2.0 -> V2.2:
+    ### (1, 5, 2, 2): ("storage_pools", "file_system_sizes"),
     (1, 5, 2, 3): ("storage_pools", "description"),
     (1, 5, 2, 4): ("storage_pools", "type"),
     (1, 5, 2, 5): ("storage_pools", "vendor"),
     # Interconnect:
-    (1, 6, 1): ("compute_pools", "interconnect"),
+    # TODO third level:
+    ### (1, 6, 1): ("compute_pools", "interconnect", "name"),
+    ### (1, 6, 2): ("compute_pools", "interconnect", "topology"),
+    ### (1, 6, 3): ("compute_pools", "interconnect", "description"),
+    ### (1, 6, 4): ("compute_pools", "interconnect", "vendor"),
+    # Benchmark performance:
+    # TODO CIM V2.0 -> V2.2:
+    ### (1, 7, 1): ("peak_performance",),
+    ### (1, 7, 2): ("linpack_performance",),
 }
 
 
@@ -235,8 +272,9 @@ def find_input_cells(spreadsheet_tab, input_labels):
                 # Handle special cases of input cell(s) offsets:
                 if isinstance(offset, str):
                     case = offset.lstrip("SPECIAL CASE: ")
-                    print("Treating a special case for the offset of:",
-                          label, "with rule:", case)
+                    if PRINT_WARNINGS:
+                        print("Treating a special case for the offset of:",
+                              label, "with rule:", case)
                     if case.endswith("+"):
                         offsets = []
                         check_cell_at_offset = int(case.rstrip("+"))
@@ -279,7 +317,8 @@ def find_input_cells(spreadsheet_tab, input_labels):
             if label.startswith("1.9.2.") or label.startswith("1.8.2."):
                 # Numbers not valid in this case, too few objects, so it
                 # we can just skip these...
-                print("Inapplicable model or MIP number skipped:", label)
+                if PRINT_WARNINGS:
+                    print("Inapplicable model or MIP number skipped:", label)
 
 
     return label_to_input_cell_mapping
@@ -352,10 +391,11 @@ def convert_tab_to_dict(spreadsheet_tab):
                         final_dict[label] = str(user_input)
                     except:
                         # Python 2 only unicode-escape
-                        print(
-                            "WARNING: Python 2 only unicode issue with:",
-                            label
-                        )
+                        if PRINT_WARNINGS:
+                            print(
+                                "WARNING: Python 2 only unicode issue with:",
+                                label
+                            )
                         final_dict[label] = user_input
         elif label.startswith("1.9.2."):
             if not spreadsheet_tab.cell(
@@ -467,11 +507,11 @@ def generate_cim_outputs(machines_spreadsheet):
 
     tabs = get_machine_tabs(machines_spreadsheet)
     for machine_tab in tabs:
-        print("CONVERTING TAB:")
-        pprint(machine_tab)
+        ###print("CONVERTING TAB:")
+        ###pprint(machine_tab)
         dict_out = convert_tab_to_dict(machine_tab)
-        print("INTERMEDIATE DICT IS:")
-        pprint(dict_out)
+        ###print("INTERMEDIATE DICT IS:")
+        ###pprint(dict_out)
         cim = convert_intermediate_dict_to_cim(dict_out)
         print("CIM IS:")
         pprint(cim)
