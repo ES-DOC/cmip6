@@ -214,7 +214,7 @@ QUESTIONS_TO_CIM_MAPPING = {
     (1, 5, 2, 4): ("storage_pools", "type"),
     (1, 5, 2, 5): ("storage_pools", "vendor"),
     # Interconnect:
-    # TODO third level:
+    # TODO CIM V2.0 -> V2.2 *and* third level:
     ### (1, 6, 1): ("compute_pools", "interconnect", "name"),
     ### (1, 6, 2): ("compute_pools", "interconnect", "topology"),
     ### (1, 6, 3): ("compute_pools", "interconnect", "description"),
@@ -227,7 +227,9 @@ QUESTIONS_TO_CIM_MAPPING = {
 
 
 def get_ws_questions_to_input_cells_mapping():
+    """TODO."""
     input_labels = WS_QUESTIONS_TO_INPUT_CELLS_MAPPING.copy()
+
     # Extend the list with any potential labels for the questions:
     applicable_models_q2 = {
         (1, 8, 2, N): 1 for N in range(
@@ -510,12 +512,22 @@ def generate_cim_outputs(machines_spreadsheet):
         ###print("CONVERTING TAB:")
         ###pprint(machine_tab)
         dict_out = convert_tab_to_dict(machine_tab)
-        ###print("INTERMEDIATE DICT IS:")
-        ###pprint(dict_out)
+        print("INTERMEDIATE DICT IS:")
+        pprint(dict_out)
+
+        # Print applicable models to test
+        models = get_applicable_models(dict_out)
+        print("APPLICABLE MODELS ARE:", models)
+
+        # Print applicable experiments to test
+        exps = get_applicable_experiments(dict_out)
+        print("APPLICABLE EXPS ARE:", exps)
+        
         cim = convert_intermediate_dict_to_cim(dict_out)
         print("CIM IS:")
         pprint(cim)
 
+        """
         print("\n*** INSPECT MACHINE CIM DOC TO CHECK IT LOOKS OK ***\n")
         pprint(cim.__dict__)
         pprint(cim.partition.__dict__)
@@ -523,17 +535,70 @@ def generate_cim_outputs(machines_spreadsheet):
         pprint(cim.compute_pools[1].__dict__)
         pprint(cim.storage_pools[0].__dict__)
         pprint(cim.storage_pools[1].__dict__)
+        """
 
         machine_cim_outputs.append(cim)
 
     return machine_cim_outputs
 
 
+def get_applicable_models(intermediate_dict):
+    """TODO."""
+    model_appl_answers = {
+        q_no: q_ans for (q_no, q_ans) in intermediate_dict.items()
+        if q_no.startswith("1.8")
+    }
+    all_applicable = model_appl_answers.pop("1.8.1")
+    models_with_appl = model_appl_answers.values()
+
+    if all_applicable == "ALL":
+        # Take all listed models, so take all model keys regardless of value
+        applicable_models = models_with_appl.keys()
+    elif all_applicable == "SOME":
+        # In this case must filter out ones specified as not being applicable
+        applicable_models = [
+            appl.keys()[0] for appl in models_with_appl if
+            appl.values()[0] == "YES"
+        ]
+    else:
+        raise ValueError(
+            "Invalid input to enum. with 'ALL' or 'SOME' option only.")
+
+    return applicable_models
+
+
+def get_applicable_experiments(intermediate_dict):
+    """TODO."""
+    exp_appl_answers = {
+        q_no: q_ans for (q_no, q_ans) in intermediate_dict.items()
+        if q_no.startswith("1.9")
+    }
+    all_applicable = exp_appl_answers.pop("1.9.1")
+    exp_with_appl = exp_appl_answers.values()
+
+    if all_applicable == "ALL":
+        # TODO, requires func from machine spreadsheet processing...
+        pass
+    elif all_applicable == "SOME":
+        # In this case must filter out ones specified as not being applicable
+        applicable_exps = {
+            appl.keys()[0]: appl.values()[0] for appl in exp_with_appl if
+            appl.values()[0] != ["NONE"]
+        }
+        # TODO for rigour, add test to check for any weird inputs, e.g. None
+        # in a list with named experiments...
+    else:
+        raise ValueError(
+            "Invalid input to enum. with 'ALL' or 'SOME' option only.")
+
+    return applicable_exps
+
+
 # Main entry point.
 if __name__ == '__main__':
     # Locate and open template
     spreadsheet_path = os.path.join(
-        "test-machine-sheets", "cmcc_real_submission.xlsx"
+        "test-machine-sheets", "ipsl_real_submission.xlsx"
     )  # TODO, TEMP: for testing
     open_spreadsheet = load_workbook(filename=spreadsheet_path)
 
