@@ -605,5 +605,19 @@ if __name__ == '__main__':
     # Extract CIM
     cim_outputs = generate_cim_outputs(open_spreadsheet)
 
+    # Test serlialisation...
+    for cim_out in cim_outputs:
+        j = pyesdoc.encode(cim_out, "json")
+        ###print("FINAL OUTPUT IS")
+        ###pprint(j)
+        assert json.loads(j)
+        # TODO decoding broken below...
+        ### assert isinstance(pyesdoc.decode(j, "json"), cim.Machine)
+
+        x = pyesdoc.encode(cim_out, "xml")
+        # TODO, fix XML decoding errors like:
+        # "Scalar decoding error 2.7 GHz <type 'float'>"
+        assert isinstance(pyesdoc.decode(x, "xml"), cim.Machine)
+
     # Close template
     open_spreadsheet.close()
