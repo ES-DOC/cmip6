@@ -443,28 +443,34 @@ def init_machine_cim():
     return machine_cim
 
 
-def map_question_inputs_to_machine_cim(inputs_by_question_number_json):
+def get_inputs_and_mapping_to_cim(inputs_by_question_number_json):
     """TODO."""
-    # 1. Filter out inputs where no value was specified, by marker
+    # Filter out inputs where no value was specified, by marker
     submitted_inputs = {
         q_no: val for q_no, val in inputs_by_question_number_json.items() if
         val != EMPTY_CELL_MARKER
     }
-
-    # 2. Inititate machine CIM document
-    machine_doc = init_machine_cim()
-
-    # 3. Chnage tuple of int question numebr labels to dot-delimited string
+    # Change tuple of int question numebr labels to dot-delimited string
     questions_to_cim_mapping_str = {
         ".".join([str(int) for int in q_no]): val for q_no, val in
         QUESTIONS_TO_CIM_MAPPING.items()
     }
+    return submitted_inputs, questions_to_cim_mapping_str
 
-    # 4. Match submitted questions to their corresponding machine CIM
-    #    components and set them accordingly on the document object
-    for q_no, q_answer in submitted_inputs.items():
-        if q_no in questions_to_cim_mapping_str:
-            corr_cim_comp = questions_to_cim_mapping_str[q_no]
+
+def get_machine_doc(inputs_by_question_number_json):
+    """TODO."""
+
+    # Inititate machine CIM document
+    machine_doc = init_machine_cim()
+    inputs, q_to_cim_mapping = get_inputs_and_mapping_to_cim(
+        inputs_by_question_number_json)
+
+    # Match submitted questions to their corresponding machine CIM
+    # components and set them accordingly on the document object
+    for q_no, q_answer in inputs.items():
+        if q_no in q_to_cim_mapping:
+            corr_cim_comp = q_to_cim_mapping[q_no]
             level = len(corr_cim_comp)
 
             # a) Top level comps
@@ -494,52 +500,29 @@ def map_question_inputs_to_machine_cim(inputs_by_question_number_json):
                     "Machine CIM should not be more than two levels deep."
                 )
 
-    # 4. Return completed machine CIM document - passed through anyway...
     return machine_doc
 
 
-def convert_intermediate_dict_to_cim(intermediate_dict):
+def generate_intermediate_dict_outputs(machines_spreadsheet):
     """TODO."""
-    return map_question_inputs_to_machine_cim(intermediate_dict)
-
-
-def generate_cim_outputs(machines_spreadsheet):
-    """TODO."""
-    machine_cim_outputs = []
-
+    intermediate_dict_outputs = []
     tabs = get_machine_tabs(machines_spreadsheet)
     for machine_tab in tabs:
-        ###print("CONVERTING TAB:")
-        ###pprint(machine_tab)
-        dict_out = convert_tab_to_dict(machine_tab)
-        print("INTERMEDIATE DICT IS:")
-        pprint(dict_out)
+        intermediate_dict_outputs.append(convert_tab_to_dict(machine_tab))
+    return intermediate_dict_outputs
 
-        # Print applicable models to test
-        models = get_applicable_models(dict_out)
-        print("APPLICABLE MODELS ARE:", models)
 
-        # Print applicable experiments to test
-        exps = get_applicable_experiments(dict_out)
-        print("APPLICABLE EXPS ARE:", exps)
-        
-        cim = convert_intermediate_dict_to_cim(dict_out)
-        print("CIM IS:")
-        pprint(cim)
+def generate_outputs(machine_dict, _print=True):
+    """TODO."""
+    # Get the machine CIM document and applicable models and experiments
+    cim_doc = get_machine_doc(machine_dict)
+    models = get_applicable_models(machine_dict)
+    exps = get_applicable_experiments(machine_dict)
 
-        """
-        print("\n*** INSPECT MACHINE CIM DOC TO CHECK IT LOOKS OK ***\n")
-        pprint(cim.__dict__)
-        pprint(cim.partition.__dict__)
-        pprint(cim.compute_pools[0].__dict__)
-        pprint(cim.compute_pools[1].__dict__)
-        pprint(cim.storage_pools[0].__dict__)
-        pprint(cim.storage_pools[1].__dict__)
-        """
+    if _print:
+        print(cim_doc, models, exps)
 
-        machine_cim_outputs.append(cim)
-
-    return machine_cim_outputs
+    return cim_doc, models, exps
 
 
 def get_applicable_models(intermediate_dict):
@@ -602,22 +585,25 @@ if __name__ == '__main__':
     )  # TODO, TEMP: for testing
     open_spreadsheet = load_workbook(filename=spreadsheet_path)
 
-    # Extract CIM
-    cim_outputs = generate_cim_outputs(open_spreadsheet)
+    # Extract outputs
+    inputs_dicts = generate_intermediate_dict_outputs(open_spreadsheet)
 
-    # Test serlialisation...
-    for cim_out in cim_outputs:
+    # Close template as now have extracted the outputs from it
+    open_spreadsheet.close()
+
+    # Iterate over all machine tabs to get all sets of outputs
+    for input_dict in inputs_dicts:
+        # Return machine doc with applicable models and experiments:
+        cim_out, apply_models_out, appl_exp_out = generate_outputs(
+            input_dict)
+
+        # Test serlialisation of the machine doc...
         j = pyesdoc.encode(cim_out, "json")
-        ###print("FINAL OUTPUT IS")
-        ###pprint(j)
         assert json.loads(j)
         # TODO decoding broken below...
-        ### assert isinstance(pyesdoc.decode(j, "json"), cim.Machine)
+        # assert isinstance(pyesdoc.decode(j, "json"), cim.Machine)
 
         x = pyesdoc.encode(cim_out, "xml")
         # TODO, fix XML decoding errors like:
         # "Scalar decoding error 2.7 GHz <type 'float'>"
         assert isinstance(pyesdoc.decode(x, "xml"), cim.Machine)
-
-    # Close template
-    open_spreadsheet.close()
