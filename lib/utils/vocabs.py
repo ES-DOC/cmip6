@@ -30,6 +30,8 @@ def get_institute(institution_id):
     """Returns institute to be processed.
 
     """
+    if isinstance(institution_id, pyessv.Term):
+        return institution_id
     return pyessv.WCRP.cmip6.institution_id[institution_id]
 
 
@@ -37,8 +39,11 @@ def get_institutes(institution_id=None):
     """Returns set of institutes to be processed.
 
     """
-    return pyessv.WCRP.cmip6.institution_id if institution_id in (None, '', 'all') else \
-           [pyessv.WCRP.cmip6.institution_id[institution_id]]
+    if institution_id in (None, '', 'all'):
+        return pyessv.WCRP.cmip6.institution_id
+    if isinstance(institution_id, pyessv.Term):
+        return [institution_id]    
+    return [pyessv.WCRP.cmip6.institution_id[institution_id]]
 
 
 def get_source(institution_id, source_id):
