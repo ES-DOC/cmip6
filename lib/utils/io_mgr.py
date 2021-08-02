@@ -26,7 +26,7 @@ def get_folder(parts):
 
     """
     path = os.path.join(CMIP6_HOME, 'repos')
-    path = os.path.join(path, 'institutional')
+    path = os.path.join(path, 'institutions')
 
     for part in parts:
         if part is None:

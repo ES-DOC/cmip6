@@ -30,6 +30,10 @@ ES-DOC software engineers.
 How to install cmip6 ?
 --------------------------------------
 
+Note that [`pyenv`](https://github.com/pyenv/pyenv) and
+[`pipenv`](https://pipenv.pypa.io/en/latest/) must be installed on your
+machine for the following commands to succeed.
+
 ```
 # Set repo.
 cd YOUR_WORKING_DIRECTORY
