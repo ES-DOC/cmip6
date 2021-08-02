@@ -98,6 +98,7 @@ alias cmip6-institutes-teams-sync='exec_cmd institutes-github-teams-sync institu
 
 # ... models
 alias cmip6-models-archive-cim-documents='exec_cmd models-archive-cim-documents models/archive_cim_documents.sh'
+alias cmip6-models-archive-cim-documents-of-mohc='exec_cmd models-archive-cim-documents-of-mohc models/archive_cim_documents_of_mohc.sh'
 alias cmip6-models-generate-cim='exec_cmd models-generate-cim models/generate_cim.sh'
 alias cmip6-models-generate-comparator-json='exec_cmd models-generate-comparator-json models/generate_comparator_json.sh'
 alias cmip6-models-generate-json='exec_cmd models-generate-json models/generate_json.sh'
