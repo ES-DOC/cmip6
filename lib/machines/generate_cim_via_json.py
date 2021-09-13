@@ -19,6 +19,8 @@ import pyesdoc
 from pyesdoc.ontologies.cim import v2 as cim
 
 
+INSTITUTE = "an institute"  # TODO: hook up to CLI
+
 PRINT_WARNINGS = False
 
 LABEL_COLUMN = 0  # i.e. index in A-Z of columns as tuple, so "A"
@@ -32,7 +34,6 @@ MAX_ROW = 600
 # Is this (first one) about right? Is a guess based on seen gen'd model lists
 MAX_NUMBER_MODELS_PER_INSTITUTE = 30  # TODO: replace with inst-specific value
 MAX_NUMBER_MIPS = 22  # TODO: replace with inst-specific value
-
 
 # Tuple keys give digits corresopnding to question labels to match to user
 # inputs, e.g. (1, 1, 1) -> question "1.1.1" or "1.1.1 *", values are offsets,
@@ -130,12 +131,32 @@ WS_QUESTIONS_TO_INPUT_CELLS_MAPPING = {
     # All (1, 9, 2, N) is processed in below
 }
 
-INSTITUTE = "an institute"  # TODO: hook up to CLI
-KWARGS = {
-    "project": "CMIP6",
-    "source": "spreadsheet",
-    "version": 1,
-    "institute": INSTITUTE
+# Denotes questions which map to CIM components of non-string type which
+# must be converted from the string inputs extracted from the spreadsheet.
+# TODO manage units from CIM.
+WS_QUESTIONS_WITH_NON_STRING_TYPE = {
+    (1, 4, 1, 5): int,
+    (1, 4, 1, 6): float,
+    (1, 4, 1, 7): int,
+    (1, 4, 1, 8, 1, 2): float,
+    (1, 4, 1, 8, 2, 2): float,
+    (1, 4, 1, 8, 3, 2): float,
+    (1, 4, 1, 9): int,
+    (1, 4, 1, 12): float,
+    (1, 4, 1, 13): int,
+    (1, 4, 2, 5): int,
+    (1, 4, 2, 6): float,
+    (1, 4, 2, 7): int,
+    (1, 4, 2, 8, 1, 2): float,
+    (1, 4, 2, 8, 2, 2): float,
+    (1, 4, 2, 8, 3, 2): float,
+    (1, 4, 2, 9): int,
+    (1, 4, 2, 12): float,
+    (1, 4, 2, 13): int,
+    (1, 5, 1, 2): float,
+    (1, 5, 2, 2): float,
+    (1, 7, 1): float,
+    (1, 7, 2): float,
 }
 
 QUESTIONS_TO_CIM_MAPPING = {
@@ -409,7 +430,7 @@ def convert_tab_to_dict(spreadsheet_tab):
                 final_dict[label] = "NONE"
             else:
                 name = get_top_cell_model_or_exp_name(
-                    input_cell_or_cells, spreadsheet_tab)  # TODO issue here
+                    input_cell_or_cells, spreadsheet_tab)
                 final_dict[label] = {name: extract_inputs_at_input_cells(
                     input_cell_or_cells, spreadsheet_tab)}
         else:
@@ -419,28 +440,76 @@ def convert_tab_to_dict(spreadsheet_tab):
     return final_dict
 
 
+def convert_str_type_to_cim_type(dicts_of_inputs):
+    """TODO."""
+    inputs_with_cim_type = []
+
+    for input_dict in dicts_of_inputs:
+        input_with_cim_type = {}
+        print("RUNNING WITH", input_dict)
+        for q_no, q_answer in input_dict.items():
+            str_q_no = convert_question_number_str_to_tuple(q_no)
+            # If the type is not correct it must be converted accordingly
+            if str_q_no in WS_QUESTIONS_WITH_NON_STRING_TYPE:
+                req_type = WS_QUESTIONS_WITH_NON_STRING_TYPE[str_q_no]
+                if not isinstance(q_answer, req_type):
+                    try:  # attempt conversion to correct CIM type
+                        q_answer = req_type(q_answer)
+                        print("%%%%%%%%%%%% CONVERTED", q_answer, "TO ",
+                              req_type)
+                    except (ValueError, TypeError):
+                        raise TypeError(
+                            "Input to question {} cannot be converted to the "
+                            "required type {}.".format(q_no, req_type)
+                        )
+
+            input_with_cim_type[q_no] = q_answer
+        inputs_with_cim_type.append(input_with_cim_type)
+
+    return inputs_with_cim_type
+
+
 def init_machine_cim():
     """TODO."""
+    kwargs = {
+        "project": "CMIP6",
+        "source": "spreadsheet",
+        "version": 1,
+        "institute": INSTITUTE
+    }
     # Define the overall document which will be populated below
-    machine_cim = pyesdoc.create(cim.Machine, **KWARGS)
+    machine_cim = pyesdoc.create(cim.Machine, **kwargs)
 
     # First-level properties, being their own platform classes
-    partition_cim = pyesdoc.create(cim.Partition, **KWARGS)
+    partition_cim = pyesdoc.create(cim.Partition, **kwargs)
 
     # Create two compute pools and storage pools, since the machine
     # spreadsheet assumption was that there would be no more than two of
     # either of these. If only one of either is described, the other is
     # removed later when it becomes known to not be applicable.
-    compute_pools_cim_1 = pyesdoc.create(cim.ComputePool, **KWARGS)
-    compute_pools_cim_2 = pyesdoc.create(cim.ComputePool, **KWARGS)
-    storage_pools_cim_1 = pyesdoc.create(cim.StoragePool, **KWARGS)
-    storage_pools_cim_2 = pyesdoc.create(cim.StoragePool, **KWARGS)
+    compute_pools_cim_1 = pyesdoc.create(cim.ComputePool, **kwargs)
+    compute_pools_cim_2 = pyesdoc.create(cim.ComputePool, **kwargs)
+    storage_pools_cim_1 = pyesdoc.create(cim.StoragePool, **kwargs)
+    storage_pools_cim_2 = pyesdoc.create(cim.StoragePool, **kwargs)
 
     # Connect the first-level properties to the top-level machine document
     machine_cim.partition = partition_cim
     machine_cim.compute_pools = [compute_pools_cim_1, compute_pools_cim_2]
     machine_cim.storage_pools = [storage_pools_cim_1, storage_pools_cim_2]
     return machine_cim
+
+
+def convert_question_number_tuple_to_str(q_no):
+    """TODO."""
+    return ".".join([str(_int) for _int in q_no])
+
+
+def convert_question_number_str_to_tuple(q_no):
+    """TODO.
+
+    Inverse to `convert_question_number_tuple_to_str`.
+    """
+    return tuple([int(_str) for _str in q_no.split(".")])
 
 
 def get_inputs_and_mapping_to_cim(inputs_by_question_number_json):
@@ -452,7 +521,7 @@ def get_inputs_and_mapping_to_cim(inputs_by_question_number_json):
     }
     # Change tuple of int question numebr labels to dot-delimited string
     questions_to_cim_mapping_str = {
-        ".".join([str(int) for int in q_no]): val for q_no, val in
+        convert_question_number_tuple_to_str(q_no): val for q_no, val in
         QUESTIONS_TO_CIM_MAPPING.items()
     }
     return submitted_inputs, questions_to_cim_mapping_str
@@ -585,17 +654,34 @@ if __name__ == '__main__':
     )  # TODO, TEMP: for testing
     open_spreadsheet = load_workbook(filename=spreadsheet_path)
 
-    # Extract outputs
+    # Extract inputs to spreadsheet as outputs ready to add to the CIM
     inputs_dicts = generate_intermediate_dict_outputs(open_spreadsheet)
 
     # Close template as now have extracted the outputs from it
     open_spreadsheet.close()
 
+    # Convert string outputs to their CIM type where non-string e.g. numeric,
+    # doing this before processing the inputs in case there is a string that
+    # cannot be converted, indicating a validation issue early on.
+    type_converted_inputs_dicts = convert_str_type_to_cim_type(inputs_dicts)
+
+    print(
+        "FINAL DICT IS:",
+        type_converted_inputs_dicts[0]["1.4.1.9"],
+        type(type_converted_inputs_dicts[0]["1.4.1.9"])
+    )
+
     # Iterate over all machine tabs to get all sets of outputs
-    for input_dict in inputs_dicts:
+    for input_dict in type_converted_inputs_dicts:
         # Return machine doc with applicable models and experiments:
         cim_out, apply_models_out, appl_exp_out = generate_outputs(
             input_dict)
+
+        # Validate the CIM document
+        # TODO invalid, fix this!
+        if not pyesdoc.is_valid(cim_out):
+            for err in pyesdoc.validate(cim_out):
+                print(err)
 
         # Test serlialisation of the machine doc...
         j = pyesdoc.encode(cim_out, "json")
