@@ -440,14 +440,18 @@ def convert_tab_to_dict(spreadsheet_tab):
     return final_dict
 
 
-def convert_str_type_to_cim_type(dicts_of_inputs):
+def convert_str_type_to_cim_type(dicts_of_inputs, _print=True):
     """TODO."""
     inputs_with_cim_type = []
 
     for input_dict in dicts_of_inputs:
         input_with_cim_type = {}
-        print("RUNNING WITH", input_dict)
-        for q_no, q_answer in input_dict.items():
+        # Filter out inputs where no value was specified, by marker
+        submitted_inputs = {
+            q_no: val for q_no, val in input_dict.items() if
+            val != EMPTY_CELL_MARKER
+        }
+        for q_no, q_answer in submitted_inputs.items():
             str_q_no = convert_question_number_str_to_tuple(q_no)
             # If the type is not correct it must be converted accordingly
             if str_q_no in WS_QUESTIONS_WITH_NON_STRING_TYPE:
@@ -455,12 +459,14 @@ def convert_str_type_to_cim_type(dicts_of_inputs):
                 if not isinstance(q_answer, req_type):
                     try:  # attempt conversion to correct CIM type
                         q_answer = req_type(q_answer)
-                        print("%%%%%%%%%%%% CONVERTED", q_answer, "TO ",
-                              req_type)
+                        if _print:
+                            print("Converted {} from string to {}".format(
+                                q_answer, req_type))
                     except (ValueError, TypeError):
                         raise TypeError(
                             "Input to question {} cannot be converted to the "
-                            "required type {}.".format(q_no, req_type)
+                            "required type {}: {}.".format(
+                                q_no, req_type, q_answer)
                         )
 
             input_with_cim_type[q_no] = q_answer
@@ -514,17 +520,12 @@ def convert_question_number_str_to_tuple(q_no):
 
 def get_inputs_and_mapping_to_cim(inputs_by_question_number_json):
     """TODO."""
-    # Filter out inputs where no value was specified, by marker
-    submitted_inputs = {
-        q_no: val for q_no, val in inputs_by_question_number_json.items() if
-        val != EMPTY_CELL_MARKER
-    }
-    # Change tuple of int question numebr labels to dot-delimited string
+    # Change tuple of int question number labels to dot-delimited string
     questions_to_cim_mapping_str = {
         convert_question_number_tuple_to_str(q_no): val for q_no, val in
         QUESTIONS_TO_CIM_MAPPING.items()
     }
-    return submitted_inputs, questions_to_cim_mapping_str
+    return inputs_by_question_number_json, questions_to_cim_mapping_str
 
 
 def get_machine_doc(inputs_by_question_number_json):
