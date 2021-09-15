@@ -495,7 +495,7 @@ def convert_str_type_to_cim_type(
     return inputs_with_cim_type
 
 
-def init_machine_cim():
+def init_machine_cim(two_compute_pools=True, two_storage_pools=True):
     """TODO."""
     kwargs = {
         "project": "CMIP6",
@@ -506,22 +506,27 @@ def init_machine_cim():
     # Define the overall document which will be populated below
     machine_cim = pyesdoc.create(cim.Machine, **kwargs)
 
-    # First-level properties, being their own platform classes
-    partition_cim = pyesdoc.create(cim.Partition, **kwargs)
-
-    # Create two compute pools and storage pools, since the machine
-    # spreadsheet assumption was that there would be no more than two of
-    # either of these. If only one of either is described, the other is
-    # removed later when it becomes known to not be applicable.
-    compute_pools_cim_1 = pyesdoc.create(cim.ComputePool, **kwargs)
-    compute_pools_cim_2 = pyesdoc.create(cim.ComputePool, **kwargs)
-    storage_pools_cim_1 = pyesdoc.create(cim.StoragePool, **kwargs)
-    storage_pools_cim_2 = pyesdoc.create(cim.StoragePool, **kwargs)
-
     # Connect the first-level properties to the top-level machine document
-    machine_cim.partition = partition_cim
-    machine_cim.compute_pools = [compute_pools_cim_1, compute_pools_cim_2]
-    machine_cim.storage_pools = [storage_pools_cim_1, storage_pools_cim_2]
+    machine_cim.partition = pyesdoc.create(cim.Partition, **kwargs)
+    if two_compute_pools:
+        machine_cim.compute_pools = [
+            pyesdoc.create(cim.ComputePool, **kwargs),
+            pyesdoc.create(cim.ComputePool, **kwargs)
+        ]
+    else:
+        machine_cim.compute_pools = [
+            pyesdoc.create(cim.ComputePool, **kwargs)
+        ]
+    if two_storage_pools:
+        machine_cim.storage_pools = [
+            pyesdoc.create(cim.StoragePool, **kwargs),
+            pyesdoc.create(cim.StoragePool, **kwargs)
+        ]
+    else:
+        machine_cim.storage_pools = [
+            pyesdoc.create(cim.StoragePool, **kwargs),
+        ]
+
     return machine_cim
 
 
@@ -548,11 +553,12 @@ def get_inputs_and_mapping_to_cim(inputs_by_question_number_json):
     return inputs_by_question_number_json, questions_to_cim_mapping_str
 
 
-def get_machine_doc(inputs_by_question_number_json):
+def get_machine_doc(inputs_by_question_number_json, two_c_pools, two_s_pools):
     """TODO."""
 
     # Inititate machine CIM document
-    machine_doc = init_machine_cim()
+    machine_doc = init_machine_cim(
+        two_compute_pools=two_c_pools, two_storage_pools=two_s_pools)
     inputs, q_to_cim_mapping = get_inputs_and_mapping_to_cim(
         inputs_by_question_number_json)
 
@@ -602,10 +608,10 @@ def generate_intermediate_dict_outputs(machines_spreadsheet):
     return intermediate_dict_outputs
 
 
-def generate_outputs(machine_dict, _print=True):
+def generate_outputs(machine_dict, two_c_pools, two_s_pools, _print=True):
     """TODO."""
     # Get the machine CIM document and applicable models and experiments
-    cim_doc = get_machine_doc(machine_dict)
+    cim_doc = get_machine_doc(machine_dict, two_c_pools, two_s_pools)
     models = get_applicable_models(machine_dict)
     exps = get_applicable_experiments(machine_dict)
 
@@ -642,7 +648,7 @@ def filter_out_excess_pool(intermediate_dicts, q_no_start):
         else:
             filtered_dicts.append(int_dict)
 
-    return filtered_dicts
+    return filtered_dicts, second_pool_described
 
 
 def get_applicable_models(intermediate_dict):
@@ -701,7 +707,7 @@ def get_applicable_experiments(intermediate_dict):
 if __name__ == '__main__':
     # Locate and open template
     spreadsheet_path = os.path.join(
-        "test-machine-sheets", "ipsl_real_submission_editedunitscrop.xlsx"
+        "test-machine-sheets", "ipsl_real_submission.xlsx"
     )  # TODO, TEMP: for testing
     open_spreadsheet = load_workbook(filename=spreadsheet_path)
 
@@ -713,10 +719,10 @@ if __name__ == '__main__':
 
     # If only one of the two possible slots for storage (compute) pool has
     # been filled out, remove the second storage (compute) pool
-    filtered_inputs_dicts = filter_out_excess_pool(
-        filter_out_excess_pool(inputs_dicts, STORAGE_POOL_2_Q_NOS),
-        COMPUTE_POOL_2_Q_NOS
-    )
+    c_pool_filtered_dicts, two_c_pools = filter_out_excess_pool(
+        inputs_dicts, COMPUTE_POOL_2_Q_NOS)
+    filtered_inputs_dicts, two_s_pools = filter_out_excess_pool(
+        c_pool_filtered_dicts, STORAGE_POOL_2_Q_NOS)
 
     # Convert string outputs to their CIM type where non-string e.g. numeric,
     # doing this before processing the inputs in case there is a string that
@@ -728,7 +734,7 @@ if __name__ == '__main__':
     for input_dict in type_converted_inputs_dicts:
         # Return machine doc with applicable models and experiments:
         cim_out, apply_models_out, appl_exp_out = generate_outputs(
-            input_dict)
+            input_dict, two_c_pools=two_c_pools, two_s_pools=two_s_pools)
 
         # Validate the CIM document
         # TODO invalid, fix this!
