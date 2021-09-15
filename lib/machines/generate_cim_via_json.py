@@ -159,6 +159,9 @@ WS_QUESTIONS_WITH_NON_STRING_TYPE = {
     (1, 7, 2): float,
 }
 
+COMPUTE_POOL_2_Q_NOS = (1, 4, 2)
+STORAGE_POOL_2_Q_NOS = (1, 5, 2)
+
 QUESTIONS_TO_CIM_MAPPING = {
     # Identity:
     (1, 1, 1): ("name",),
@@ -612,6 +615,36 @@ def generate_outputs(machine_dict, _print=True):
     return cim_doc, models, exps
 
 
+def filter_out_excess_pool(intermediate_dicts, q_no_start):
+    """TODO."""
+    filtered_dicts = []
+
+    # Determine if a second pool has been described
+    second_pool_described = False
+    for int_dict in intermediate_dicts:
+        for q_no, q_answer in int_dict.items():
+            if (not q_no.startswith(
+                    convert_question_number_tuple_to_str(q_no_start))):
+                continue
+                if (q_answer != EMPTY_CELL_MARKER and
+                    q_answer != ([EMPTY_CELL_MARKER])):
+                    second_pool_described = True
+
+        # If the second pool has not been provided, filter out that question
+        if not second_pool_described:
+            filtered_dicts.append(
+                {
+                    q_no: q_ans for q_no, q_ans in int_dict.items() if
+                    not q_no.startswith(convert_question_number_tuple_to_str(
+                        q_no_start))
+                }
+            )
+        else:
+            filtered_dicts.append(int_dict)
+
+    return filtered_dicts
+
+
 def get_applicable_models(intermediate_dict):
     """TODO."""
     model_appl_answers = {
@@ -678,10 +711,18 @@ if __name__ == '__main__':
     # Close template as now have extracted the outputs from it
     open_spreadsheet.close()
 
+    # If only one of the two possible slots for storage (compute) pool has
+    # been filled out, remove the second storage (compute) pool
+    filtered_inputs_dicts = filter_out_excess_pool(
+        filter_out_excess_pool(inputs_dicts, STORAGE_POOL_2_Q_NOS),
+        COMPUTE_POOL_2_Q_NOS
+    )
+
     # Convert string outputs to their CIM type where non-string e.g. numeric,
     # doing this before processing the inputs in case there is a string that
     # cannot be converted, indicating a validation issue early on.
-    type_converted_inputs_dicts = convert_str_type_to_cim_type(inputs_dicts)
+    type_converted_inputs_dicts = convert_str_type_to_cim_type(
+        filtered_inputs_dicts)
 
     # Iterate over all machine tabs to get all sets of outputs
     for input_dict in type_converted_inputs_dicts:
