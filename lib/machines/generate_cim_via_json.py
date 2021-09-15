@@ -315,6 +315,12 @@ def find_input_cells(spreadsheet_tab, input_labels):
                     else:  # not contiguous multiple input cells, other case
                         offsets = case.split("+")
 
+                    # If offsets == [] here, no answer was provided so set as
+                    # the input cell only the one default input box which will
+                    # be recognised as empty later
+                    if not offsets:
+                        offsets = [check_cell_at_offset]
+
                     # Institutes may, against advice, have left some
                     # experiment input cells blank to indicate no applicable
                     # experiments by MIP, so to cater for these cases, replace
@@ -440,7 +446,8 @@ def convert_tab_to_dict(spreadsheet_tab):
     return final_dict
 
 
-def convert_str_type_to_cim_type(dicts_of_inputs, _print=True):
+def convert_str_type_to_cim_type(
+        dicts_of_inputs, error_when_fail_type_conv=False, _print=True):
     """TODO."""
     inputs_with_cim_type = []
 
@@ -449,8 +456,9 @@ def convert_str_type_to_cim_type(dicts_of_inputs, _print=True):
         # Filter out inputs where no value was specified, by marker
         submitted_inputs = {
             q_no: val for q_no, val in input_dict.items() if
-            val != EMPTY_CELL_MARKER
+            val != EMPTY_CELL_MARKER and val != [EMPTY_CELL_MARKER]
         }
+        print("INPUTS ARE:", submitted_inputs)
         for q_no, q_answer in submitted_inputs.items():
             str_q_no = convert_question_number_str_to_tuple(q_no)
             # If the type is not correct it must be converted accordingly
@@ -463,12 +471,21 @@ def convert_str_type_to_cim_type(dicts_of_inputs, _print=True):
                             print("Converted {} from string to {}".format(
                                 q_answer, req_type))
                     except (ValueError, TypeError):
-                        raise TypeError(
-                            "Input to question {} cannot be converted to the "
-                            "required type {}: {}.".format(
-                                q_no, req_type, q_answer)
-                        )
-
+                        if error_when_fail_type_conv:
+                            raise TypeError(
+                                "Input to question {} cannot be converted "
+                                "to the required type {}: {}.".format(
+                                    q_no, req_type, q_answer)
+                            )
+                        else:  # raise issues with group, so skip if not valid
+                            if _print:
+                                print(
+                                    "WARNING: omitting answer to {} which "
+                                    "could not be converted from string input "
+                                    "to {} (not set to error): {}".format(
+                                        q_no, req_type, q_answer)
+                                )
+                            continue
             input_with_cim_type[q_no] = q_answer
         inputs_with_cim_type.append(input_with_cim_type)
 
@@ -651,7 +668,7 @@ def get_applicable_experiments(intermediate_dict):
 if __name__ == '__main__':
     # Locate and open template
     spreadsheet_path = os.path.join(
-        "test-machine-sheets", "ipsl_real_submission.xlsx"
+        "test-machine-sheets", "ipsl_real_submission_editedunitscrop.xlsx"
     )  # TODO, TEMP: for testing
     open_spreadsheet = load_workbook(filename=spreadsheet_path)
 
@@ -665,12 +682,6 @@ if __name__ == '__main__':
     # doing this before processing the inputs in case there is a string that
     # cannot be converted, indicating a validation issue early on.
     type_converted_inputs_dicts = convert_str_type_to_cim_type(inputs_dicts)
-
-    print(
-        "FINAL DICT IS:",
-        type_converted_inputs_dicts[0]["1.4.1.9"],
-        type(type_converted_inputs_dicts[0]["1.4.1.9"])
-    )
 
     # Iterate over all machine tabs to get all sets of outputs
     for input_dict in type_converted_inputs_dicts:
