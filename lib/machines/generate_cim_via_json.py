@@ -626,18 +626,18 @@ def filter_out_excess_pool(intermediate_dicts, q_no_start):
     filtered_dicts = []
 
     # Determine if a second pool has been described
-    second_pool_described = False
-    for int_dict in intermediate_dicts:
+    second_pool_described = [False] * len(intermediate_dicts)
+    for index, int_dict in enumerate(intermediate_dicts):
         for q_no, q_answer in int_dict.items():
             if (not q_no.startswith(
                     convert_question_number_tuple_to_str(q_no_start))):
                 continue
-                if (q_answer != EMPTY_CELL_MARKER and
-                    q_answer != ([EMPTY_CELL_MARKER])):
-                    second_pool_described = True
+            if (q_answer != EMPTY_CELL_MARKER and
+                q_answer != ([EMPTY_CELL_MARKER])):
+                second_pool_described[index] = True
 
         # If the second pool has not been provided, filter out that question
-        if not second_pool_described:
+        if not second_pool_described[index]:
             filtered_dicts.append(
                 {
                     q_no: q_ans for q_no, q_ans in int_dict.items() if
@@ -731,10 +731,12 @@ if __name__ == '__main__':
         filtered_inputs_dicts)
 
     # Iterate over all machine tabs to get all sets of outputs
-    for input_dict in type_converted_inputs_dicts:
+    for index, input_dict in enumerate(type_converted_inputs_dicts):
         # Return machine doc with applicable models and experiments:
         cim_out, apply_models_out, appl_exp_out = generate_outputs(
-            input_dict, two_c_pools=two_c_pools, two_s_pools=two_s_pools)
+            input_dict, two_c_pools=two_c_pools[index],
+            two_s_pools=two_s_pools[index]
+        )
 
         # Validate the CIM document
         # TODO invalid, fix this!
