@@ -461,7 +461,6 @@ def convert_str_type_to_cim_type(
             q_no: val for q_no, val in input_dict.items() if
             val != EMPTY_CELL_MARKER and val != [EMPTY_CELL_MARKER]
         }
-        print("INPUTS ARE:", submitted_inputs)
         for q_no, q_answer in submitted_inputs.items():
             str_q_no = convert_question_number_str_to_tuple(q_no)
             # If the type is not correct it must be converted accordingly
@@ -703,13 +702,10 @@ def get_applicable_experiments(intermediate_dict):
     return applicable_exps
 
 
-# Main entry point.
-if __name__ == '__main__':
+def convert_ws_to_inputs(ws_location):
+    """TODO."""
     # Locate and open template
-    spreadsheet_path = os.path.join(
-        "test-machine-sheets", "ipsl_real_submission.xlsx"
-    )  # TODO, TEMP: for testing
-    open_spreadsheet = load_workbook(filename=spreadsheet_path)
+    open_spreadsheet = load_workbook(filename=ws_location)
 
     # Extract inputs to spreadsheet as outputs ready to add to the CIM
     inputs_dicts = generate_intermediate_dict_outputs(open_spreadsheet)
@@ -730,8 +726,18 @@ if __name__ == '__main__':
     type_converted_inputs_dicts = convert_str_type_to_cim_type(
         filtered_inputs_dicts)
 
+    return type_converted_inputs_dicts, two_c_pools, two_s_pools
+
+
+# Main entry point.
+if __name__ == '__main__':
+    inputs, two_c_pools, two_s_pools = convert_ws_to_inputs(
+        os.path.join(
+            "test-machine-sheets", "ipsl_real_submission.xlsx"
+    ))  # TODO: hook up location to CLI, this WS is just for testing purposes
+
     # Iterate over all machine tabs to get all sets of outputs
-    for index, input_dict in enumerate(type_converted_inputs_dicts):
+    for index, input_dict in enumerate(inputs):
         # Return machine doc with applicable models and experiments:
         cim_out, apply_models_out, appl_exp_out = generate_outputs(
             input_dict, two_c_pools=two_c_pools[index],
