@@ -162,6 +162,20 @@ WS_QUESTIONS_WITH_NON_STRING_TYPE = {
 COMPUTE_POOL_2_Q_NOS = (1, 4, 2)
 STORAGE_POOL_2_Q_NOS = (1, 5, 2)
 
+# TODO this is for CIM V2.0 only, TODO CIM V2.0 -> V2.2
+WS_QUESTIONS_WITH_ASSOCIATIONS = {
+    (1, 2, 1): "Party",
+    (1, 2, 3): "OnlineResource",
+    (1, 2, 4): "TimePeriod",
+    (1, 3, 1): "Party",
+    (1, 4, 1, 6): "StorageVolume",
+    (1, 4, 2, 6): "StorageVolume",
+    (1, 5, 1, 4): "StorageSystems",
+    (1, 5, 2, 4): "StorageSystems",
+    (1, 5, 1, 5): "Party",
+    (1, 5, 2, 5): "Party",
+}
+
 QUESTIONS_TO_CIM_MAPPING = {
     # Identity:
     (1, 1, 1): ("name",),
@@ -552,6 +566,23 @@ def get_inputs_and_mapping_to_cim(inputs_by_question_number_json):
     return inputs_by_question_number_json, questions_to_cim_mapping_str
 
 
+def set_cim_component(q_no, component, attribute_to_set, value_to_set):
+    """TODO."""
+    print("Q NO IS", q_no, "SETTING AS ")
+    q_no_tuple = convert_question_number_str_to_tuple(q_no)
+    if q_no_tuple in WS_QUESTIONS_WITH_ASSOCIATIONS:  # create an association
+        cim_object = getattr(cim,  WS_QUESTIONS_WITH_ASSOCIATIONS[q_no_tuple])
+        # Set an association
+        association = pyesdoc.associate_by_name(
+            component, cim_object, value_to_set)
+        print("SEETING ASSOC", component, attribute_to_set, association)
+        setattr(component, attribute_to_set, association)
+    else:
+        # Set an attribute
+        print("SEETING attr", component, attribute_to_set)
+        setattr(component, attribute_to_set, value_to_set)
+
+
 def get_machine_doc(inputs_by_question_number_json, two_c_pools, two_s_pools):
     """TODO."""
 
@@ -570,7 +601,8 @@ def get_machine_doc(inputs_by_question_number_json, two_c_pools, two_s_pools):
 
             # a) Top level comps
             if level == 1:
-                setattr(machine_doc, corr_cim_comp[0], q_answer)
+                set_cim_component(
+                    q_no, machine_doc, corr_cim_comp[0], q_answer)
             elif level == 2:  # b) second-level comps e.g. storage pool
                 level_1_comp, level_2_comp = corr_cim_comp
 
@@ -581,12 +613,14 @@ def get_machine_doc(inputs_by_question_number_json, two_c_pools, two_s_pools):
                     # (1 -> first => Python index 0, etc.)
                     pool_index = int(str(q_no.split(".")[2])) - 1
                     # Set the value on the correct pool in the length-two list
-                    setattr(
+                    set_cim_component(
+                        q_no,
                         getattr(machine_doc, level_1_comp)[pool_index],
                         level_2_comp, q_answer
                     )
                 else:
-                    setattr(
+                    set_cim_component(
+                        q_no,
                         getattr(machine_doc, level_1_comp),
                         level_2_comp, q_answer
                     )
@@ -743,6 +777,13 @@ if __name__ == '__main__':
             input_dict, two_c_pools=two_c_pools[index],
             two_s_pools=two_s_pools[index]
         )
+
+        print("\n*** INSPECT MACHINE CIM DOC TO CHECK IT LOOKS OK ***\n")
+        print(type(cim_out))
+        pprint(cim_out.__dict__)
+        pprint(cim_out.partition.__dict__)
+        pprint(cim_out.compute_pools[0].__dict__)
+        pprint(cim_out.storage_pools[0].__dict__)
 
         # Validate the CIM document
         # TODO invalid, fix this!
