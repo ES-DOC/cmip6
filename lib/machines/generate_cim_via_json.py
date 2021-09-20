@@ -2,7 +2,7 @@
 .. module:: generate_cim_via_json.py
    :license: GPL/CeCIL
    :platform: Unix, Windows
-   :synopsis: Converts CMIP6 machine spreadsheets to CIM via intermediate JSON.
+   :synopsis: Converts CMIP6 machine spreadsheets to a machine CIM document.
 
 .. moduleauthor::
    Sadie Bartholomew <sadie.bartholomew@ncas.ac.uk>
@@ -34,9 +34,6 @@ MAX_ROW = 600
 # Is this (first one) about right? Is a guess based on seen gen'd model lists
 MAX_NUMBER_MODELS_PER_INSTITUTE = 30  # TODO: replace with inst-specific value
 MAX_NUMBER_MIPS = 22  # TODO: replace with inst-specific value
-
-ONLINE_DOCS_ONLINE_RES_CIM_NAME = (
-    "Online documentation describing a machine")
 
 # Tuple keys give digits corresopnding to question labels to match to user
 # inputs, e.g. (1, 1, 1) -> question "1.1.1" or "1.1.1 *", values are offsets,
@@ -139,7 +136,7 @@ WS_QUESTIONS_TO_INPUT_CELLS_MAPPING = {
 # TODO manage units from CIM.
 WS_QUESTIONS_WITH_NON_STRING_TYPE = {
     (1, 4, 1, 5): int,
-    (1, 4, 1, 6): float,
+    (1, 4, 1, 6): int,  # for CIM v2.0 only, float at 2.2
     (1, 4, 1, 7): int,
     (1, 4, 1, 8, 1, 2): float,
     (1, 4, 1, 8, 2, 2): float,
@@ -148,7 +145,7 @@ WS_QUESTIONS_WITH_NON_STRING_TYPE = {
     (1, 4, 1, 12): float,
     (1, 4, 1, 13): int,
     (1, 4, 2, 5): int,
-    (1, 4, 2, 6): float,
+    (1, 4, 2, 6): int,  # for CIM v2.0 only, float at 2.2
     (1, 4, 2, 7): int,
     (1, 4, 2, 8, 1, 2): float,
     (1, 4, 2, 8, 2, 2): float,
@@ -578,7 +575,6 @@ def get_inputs_and_mapping_to_cim(inputs_by_question_number_json):
 
 def set_cim_component(q_no, component, attribute_to_set, value_to_set):
     """TODO."""
-    print("Q NO IS", q_no, "SETTING AS ")
     q_no_tuple = convert_question_number_str_to_tuple(q_no)
     if q_no_tuple in WS_QUESTIONS_WITH_ASSOCIATIONS:  # create an association
         cim_object = getattr(cim, WS_QUESTIONS_WITH_ASSOCIATIONS[q_no_tuple])
@@ -616,7 +612,7 @@ def get_machine_doc(inputs_by_question_number_json, two_c_pools, two_s_pools):
                     set_cim_component(
                         q_no,
                         getattr(machine_doc, corr_cim_comp[0])[0],
-                        "name", ONLINE_DOCS_ONLINE_RES_CIM_NAME
+                        "name", "Online documentation describing a machine"
                     )
                     set_cim_component(
                         q_no,
@@ -635,12 +631,27 @@ def get_machine_doc(inputs_by_question_number_json, two_c_pools, two_s_pools):
                     # indicated by the third value in the question number
                     # (1 -> first => Python index 0, etc.)
                     pool_index = int(str(q_no.split(".")[2])) - 1
-                    # Set the value on the correct pool in the length-two list
-                    set_cim_component(
-                        q_no,
-                        getattr(machine_doc, level_1_comp)[pool_index],
-                        level_2_comp, q_answer
-                    )
+
+                    if level_2_comp == "memory_per_node":
+                        # Deal with special case:
+                        set_cim_component(
+                            q_no,
+                            getattr(machine_doc, level_1_comp)[pool_index],
+                            level_2_comp, "Memory per node"
+                        )
+                        setattr(
+                            getattr(
+                                getattr(machine_doc, level_1_comp)[pool_index],
+                                level_2_comp
+                            ), "volume", q_answer
+                        )
+                    else:
+                        # Set value on the correct pool in the length-two list
+                        set_cim_component(
+                            q_no,
+                            getattr(machine_doc, level_1_comp)[pool_index],
+                            level_2_comp, q_answer
+                        )
                 else:
                     set_cim_component(
                         q_no,
@@ -804,9 +815,9 @@ if __name__ == '__main__':
         print("\n*** INSPECT MACHINE CIM DOC TO CHECK IT LOOKS OK ***\n")
         print(type(cim_out))
         pprint(cim_out.__dict__)
-        #pprint(cim_out.partition.__dict__)
-        #pprint(cim_out.compute_pools[0].__dict__)
         pprint(cim_out.compute_pools[0].__dict__)
+        pprint(cim_out.compute_pools[0].memory_per_node.__dict__)
+        pprint(cim_out.compute_pools[0].memory_per_node.volume)
 
         # Validate the CIM document
         # TODO invalid, fix this!
