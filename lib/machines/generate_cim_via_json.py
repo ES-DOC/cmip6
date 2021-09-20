@@ -509,7 +509,9 @@ def convert_str_type_to_cim_type(
 
 
 def init_machine_cim(
-        set_partition=False, two_compute_pools=True, two_storage_pools=True):
+        set_partition=False, two_compute_pools=True, two_storage_pools=True,
+        online_docs_given=True
+):
     """TODO."""
     kwargs = {
         "project": "CMIP6",
@@ -524,8 +526,9 @@ def init_machine_cim(
     if set_partition:
         machine_cim.partition = pyesdoc.create(cim.Partition, **kwargs)
     # TODO: list of given length, for now groups have all given len 1 answer
-    machine_cim.online_documentation = [pyesdoc.create(
-        cim.OnlineResource)]
+    if online_docs_given:
+        machine_cim.online_documentation = [pyesdoc.create(
+            cim.OnlineResource)]
 
     # Add pools based on the number required (max. two based on spreadsheet):
     if two_compute_pools:
@@ -587,13 +590,16 @@ def set_cim_component(q_no, component, attribute_to_set, value_to_set):
         setattr(component, attribute_to_set, value_to_set)
 
 
-def get_machine_doc(inputs_by_question_number_json, two_c_pools, two_s_pools):
+def get_machine_doc(
+        inputs_by_question_number_json, two_c_pools, two_s_pools, docs_given):
     """TODO."""
 
     # Inititate machine CIM document
     # TODO: manage multiple partitions via set_partition flag kwarg
     machine_doc = init_machine_cim(
-        two_compute_pools=two_c_pools, two_storage_pools=two_s_pools)
+        two_compute_pools=two_c_pools, two_storage_pools=two_s_pools,
+        online_docs_given=docs_given
+    )
     inputs, q_to_cim_mapping = get_inputs_and_mapping_to_cim(
         inputs_by_question_number_json)
 
@@ -687,10 +693,12 @@ def generate_intermediate_dict_outputs(machines_spreadsheet):
     return intermediate_dict_outputs
 
 
-def generate_outputs(machine_dict, two_c_pools, two_s_pools, _print=False):
+def generate_outputs(
+        machine_dict, two_c_pools, two_s_pools, docs_given, _print=False):
     """TODO."""
     # Get the machine CIM document and applicable models and experiments
-    cim_doc = get_machine_doc(machine_dict, two_c_pools, two_s_pools)
+    cim_doc = get_machine_doc(
+        machine_dict, two_c_pools, two_s_pools, docs_given)
     models = get_applicable_models(machine_dict)
     exps = get_applicable_experiments(machine_dict)
 
@@ -802,18 +810,23 @@ def convert_ws_to_inputs(ws_location):
     filtered_inputs_dicts, two_s_pools = filter_out_excess_pool(
         c_pool_filtered_dicts, STORAGE_POOL_2_Q_NOS)
 
+    has_docs = [
+        inputs_d.get("1.2.3") != [EMPTY_CELL_MARKER]
+        for inputs_d in filtered_inputs_dicts
+    ]
+
     # Convert string outputs to their CIM type where non-string e.g. numeric,
     # doing this before processing the inputs in case there is a string that
     # cannot be converted, indicating a validation issue early on.
     type_converted_inputs_dicts = convert_str_type_to_cim_type(
         filtered_inputs_dicts)
 
-    return type_converted_inputs_dicts, two_c_pools, two_s_pools
+    return type_converted_inputs_dicts, two_c_pools, two_s_pools, has_docs
 
 
 # Main entry point.
 if __name__ == '__main__':
-    inputs, two_c_pools, two_s_pools = convert_ws_to_inputs(
+    inputs, two_c_pools, two_s_pools, has_docs = convert_ws_to_inputs(
         os.path.join(
             "test-machine-sheets", "cmcc_real_submission.xlsx"
     ))  # TODO: hook up location to CLI, this WS is just for testing purposes
@@ -823,7 +836,7 @@ if __name__ == '__main__':
         # Return machine doc with applicable models and experiments:
         cim_out, apply_models_out, appl_exp_out = generate_outputs(
             input_dict, two_c_pools=two_c_pools[index],
-            two_s_pools=two_s_pools[index]
+            two_s_pools=two_s_pools[index], docs_given=has_docs[index]
         )
 
         # Validate the CIM document - there should not be any errors
