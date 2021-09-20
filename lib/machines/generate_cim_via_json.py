@@ -769,8 +769,10 @@ def get_applicable_experiments(intermediate_dict):
         pass
     elif all_applicable == "SOME":
         # In this case must filter out ones specified as not being applicable
+        given_exps = [
+            exp for exp in exp_with_appl if exp is not "NONE"]
         applicable_exps = {
-            appl.keys()[0]: appl.values()[0] for appl in exp_with_appl if
+            appl.keys()[0]: appl.values()[0] for appl in given_exps if
             appl.values()[0] != ["NONE"]
         }
         # TODO for rigour, add test to check for any weird inputs, e.g. None
@@ -813,7 +815,7 @@ def convert_ws_to_inputs(ws_location):
 if __name__ == '__main__':
     inputs, two_c_pools, two_s_pools = convert_ws_to_inputs(
         os.path.join(
-            "test-machine-sheets", "ipsl_real_submission.xlsx"
+            "test-machine-sheets", "cmcc_real_submission.xlsx"
     ))  # TODO: hook up location to CLI, this WS is just for testing purposes
 
     # Iterate over all machine tabs to get all sets of outputs
