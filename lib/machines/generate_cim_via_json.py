@@ -35,6 +35,9 @@ MAX_ROW = 600
 MAX_NUMBER_MODELS_PER_INSTITUTE = 30  # TODO: replace with inst-specific value
 MAX_NUMBER_MIPS = 22  # TODO: replace with inst-specific value
 
+ONLINE_DOCS_ONLINE_RES_CIM_NAME = (
+    "Online documentation describing a machine")
+
 # Tuple keys give digits corresopnding to question labels to match to user
 # inputs, e.g. (1, 1, 1) -> question "1.1.1" or "1.1.1 *", values are offsets,
 # where a "SPECIAL CASE:" string value indicates extra rows may have been
@@ -165,13 +168,13 @@ STORAGE_POOL_2_Q_NOS = (1, 5, 2)
 # TODO this is for CIM V2.0 only, TODO CIM V2.0 -> V2.2
 WS_QUESTIONS_WITH_ASSOCIATIONS = {
     (1, 2, 1): "Party",
-    (1, 2, 3): "OnlineResource",
+    #(1, 2, 3): "OnlineResource",
     (1, 2, 4): "TimePeriod",
     (1, 3, 1): "Party",
     (1, 4, 1, 6): "StorageVolume",
     (1, 4, 2, 6): "StorageVolume",
-    (1, 5, 1, 4): "StorageSystems",
-    (1, 5, 2, 4): "StorageSystems",
+    # (1, 5, 1, 4): "StorageSystems",  # validates to a SS string by nature of
+    # (1, 5, 2, 4): "StorageSystems",  # ... the spreadsheet enum, so not req.
     (1, 5, 1, 5): "Party",
     (1, 5, 2, 5): "Party",
 }
@@ -521,6 +524,11 @@ def init_machine_cim(two_compute_pools=True, two_storage_pools=True):
 
     # Connect the first-level properties to the top-level machine document
     machine_cim.partition = pyesdoc.create(cim.Partition, **kwargs)
+    # TODO: list of given length, for now groups have all given len 1 answer
+    machine_cim.online_documentation = [pyesdoc.create(
+        cim.OnlineResource)]
+
+    # Add pools based on the number required (max. two based on spreadsheet):
     if two_compute_pools:
         machine_cim.compute_pools = [
             pyesdoc.create(cim.ComputePool, **kwargs),
@@ -571,15 +579,15 @@ def set_cim_component(q_no, component, attribute_to_set, value_to_set):
     print("Q NO IS", q_no, "SETTING AS ")
     q_no_tuple = convert_question_number_str_to_tuple(q_no)
     if q_no_tuple in WS_QUESTIONS_WITH_ASSOCIATIONS:  # create an association
-        cim_object = getattr(cim,  WS_QUESTIONS_WITH_ASSOCIATIONS[q_no_tuple])
+        cim_object = getattr(cim, WS_QUESTIONS_WITH_ASSOCIATIONS[q_no_tuple])
         # Set an association
         association = pyesdoc.associate_by_name(
             component, cim_object, value_to_set)
-        print("SEETING ASSOC", component, attribute_to_set, association)
+        print("SETTING ASSOC", component, attribute_to_set, association)
         setattr(component, attribute_to_set, association)
     else:
         # Set an attribute
-        print("SEETING attr", component, attribute_to_set)
+        print("SETTING attr", component, attribute_to_set)
         setattr(component, attribute_to_set, value_to_set)
 
 
@@ -601,8 +609,20 @@ def get_machine_doc(inputs_by_question_number_json, two_c_pools, two_s_pools):
 
             # a) Top level comps
             if level == 1:
-                set_cim_component(
-                    q_no, machine_doc, corr_cim_comp[0], q_answer)
+                if corr_cim_comp[0] == "online_documentation":
+                    set_cim_component(
+                        q_no,
+                        getattr(machine_doc, corr_cim_comp[0])[0],
+                        "name", ONLINE_DOCS_ONLINE_RES_CIM_NAME
+                    )
+                    set_cim_component(
+                        q_no,
+                        getattr(machine_doc, corr_cim_comp[0])[0],
+                        "linkage", q_answer[0]
+                    )
+                else:
+                    set_cim_component(
+                        q_no, machine_doc, corr_cim_comp[0], q_answer)
             elif level == 2:  # b) second-level comps e.g. storage pool
                 level_1_comp, level_2_comp = corr_cim_comp
 
@@ -781,9 +801,10 @@ if __name__ == '__main__':
         print("\n*** INSPECT MACHINE CIM DOC TO CHECK IT LOOKS OK ***\n")
         print(type(cim_out))
         pprint(cim_out.__dict__)
-        pprint(cim_out.partition.__dict__)
-        pprint(cim_out.compute_pools[0].__dict__)
+        #pprint(cim_out.partition.__dict__)
+        #pprint(cim_out.compute_pools[0].__dict__)
         pprint(cim_out.storage_pools[0].__dict__)
+        print(cim_out.online_documentation[0].__dict__)
 
         # Validate the CIM document
         # TODO invalid, fix this!
