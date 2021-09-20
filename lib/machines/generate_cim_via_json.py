@@ -511,7 +511,8 @@ def convert_str_type_to_cim_type(
     return inputs_with_cim_type
 
 
-def init_machine_cim(two_compute_pools=True, two_storage_pools=True):
+def init_machine_cim(
+        set_partition=False, two_compute_pools=True, two_storage_pools=True):
     """TODO."""
     kwargs = {
         "project": "CMIP6",
@@ -523,7 +524,8 @@ def init_machine_cim(two_compute_pools=True, two_storage_pools=True):
     machine_cim = pyesdoc.create(cim.Machine, **kwargs)
 
     # Connect the first-level properties to the top-level machine document
-    machine_cim.partition = pyesdoc.create(cim.Partition, **kwargs)
+    if set_partition:
+        machine_cim.partition = pyesdoc.create(cim.Partition, **kwargs)
     # TODO: list of given length, for now groups have all given len 1 answer
     machine_cim.online_documentation = [pyesdoc.create(
         cim.OnlineResource)]
@@ -595,6 +597,7 @@ def get_machine_doc(inputs_by_question_number_json, two_c_pools, two_s_pools):
     """TODO."""
 
     # Inititate machine CIM document
+    # TODO: manage multiple partitions via set_partition flag kwarg
     machine_doc = init_machine_cim(
         two_compute_pools=two_c_pools, two_storage_pools=two_s_pools)
     inputs, q_to_cim_mapping = get_inputs_and_mapping_to_cim(
@@ -803,8 +806,7 @@ if __name__ == '__main__':
         pprint(cim_out.__dict__)
         #pprint(cim_out.partition.__dict__)
         #pprint(cim_out.compute_pools[0].__dict__)
-        pprint(cim_out.storage_pools[0].__dict__)
-        print(cim_out.online_documentation[0].__dict__)
+        pprint(cim_out.compute_pools[0].__dict__)
 
         # Validate the CIM document
         # TODO invalid, fix this!
