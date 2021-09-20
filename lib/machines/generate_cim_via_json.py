@@ -464,7 +464,7 @@ def convert_tab_to_dict(spreadsheet_tab):
 
 
 def convert_str_type_to_cim_type(
-        dicts_of_inputs, error_when_fail_type_conv=False, _print=True):
+        dicts_of_inputs, error_when_fail_type_conv=False, _print=False):
     """TODO."""
     inputs_with_cim_type = []
 
@@ -581,11 +581,9 @@ def set_cim_component(q_no, component, attribute_to_set, value_to_set):
         # Set an association
         association = pyesdoc.associate_by_name(
             component, cim_object, value_to_set)
-        print("SETTING ASSOC", component, attribute_to_set, association)
         setattr(component, attribute_to_set, association)
     else:
         # Set an attribute
-        print("SETTING attr", component, attribute_to_set)
         setattr(component, attribute_to_set, value_to_set)
 
 
@@ -621,9 +619,8 @@ def get_machine_doc(inputs_by_question_number_json, two_c_pools, two_s_pools):
                         "linkage", q_answer[0]
                     )
                 elif comp == "when_used":  # special case 2
-                    print("WU VALUES ARE", q_no, machine_doc, comp, q_answer)
                     set_cim_component(
-                        q_no, machine_doc, comp, "When used")  #q_answer)
+                        q_no, machine_doc, comp, "When used")
                     if q_answer[0] != EMPTY_CELL_MARKER:
                         setattr(
                             getattr(machine_doc, comp),
@@ -690,7 +687,7 @@ def generate_intermediate_dict_outputs(machines_spreadsheet):
     return intermediate_dict_outputs
 
 
-def generate_outputs(machine_dict, two_c_pools, two_s_pools, _print=True):
+def generate_outputs(machine_dict, two_c_pools, two_s_pools, _print=False):
     """TODO."""
     # Get the machine CIM document and applicable models and experiments
     cim_doc = get_machine_doc(machine_dict, two_c_pools, two_s_pools)
@@ -827,18 +824,12 @@ if __name__ == '__main__':
             two_s_pools=two_s_pools[index]
         )
 
-        print("\n*** INSPECT MACHINE CIM DOC TO CHECK IT LOOKS OK ***\n")
-        print(type(cim_out))
-        pprint(cim_out.__dict__)
-        pprint(cim_out.compute_pools[0].__dict__)
-        pprint(cim_out.compute_pools[0].memory_per_node.__dict__)
-        pprint(cim_out.when_used)
-        pprint(cim_out.when_used.__dict__)
-        pprint(cim_out.online_documentation)
-        pprint(cim_out.online_documentation[0].__dict__)
-
         # Validate the CIM document - there should not be any errors
-        if not pyesdoc.is_valid(cim_out):
+        if pyesdoc.is_valid(cim_out):
+            print(
+                "Complete: machine CIM document generated and is valid.")
+        else:
+            print("Machine CIM document generated is not valid:")
             for err in pyesdoc.validate(cim_out):
                 print(err)
 
