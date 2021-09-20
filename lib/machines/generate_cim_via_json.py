@@ -608,20 +608,35 @@ def get_machine_doc(inputs_by_question_number_json, two_c_pools, two_s_pools):
 
             # a) Top level comps
             if level == 1:
-                if corr_cim_comp[0] == "online_documentation":
+                comp = corr_cim_comp[0]
+                if comp == "online_documentation":  # special case 1
                     set_cim_component(
                         q_no,
-                        getattr(machine_doc, corr_cim_comp[0])[0],
+                        getattr(machine_doc, comp)[0],
                         "name", "Online documentation describing a machine"
                     )
                     set_cim_component(
                         q_no,
-                        getattr(machine_doc, corr_cim_comp[0])[0],
+                        getattr(machine_doc, comp)[0],
                         "linkage", q_answer[0]
                     )
+                elif comp == "when_used":  # special case 2
+                    print("WU VALUES ARE", q_no, machine_doc, comp, q_answer)
+                    set_cim_component(
+                        q_no, machine_doc, comp, "When used")  #q_answer)
+                    if q_answer[0] != EMPTY_CELL_MARKER:
+                        setattr(
+                            getattr(machine_doc, comp),
+                            "start_date", q_answer[0]
+                        )
+                    if q_answer[1] != EMPTY_CELL_MARKER:
+                        setattr(
+                            getattr(machine_doc, comp),
+                            "end_date", q_answer[1]
+                        )
                 else:
                     set_cim_component(
-                        q_no, machine_doc, corr_cim_comp[0], q_answer)
+                        q_no, machine_doc, comp, q_answer)
             elif level == 2:  # b) second-level comps e.g. storage pool
                 level_1_comp, level_2_comp = corr_cim_comp
 
@@ -817,10 +832,12 @@ if __name__ == '__main__':
         pprint(cim_out.__dict__)
         pprint(cim_out.compute_pools[0].__dict__)
         pprint(cim_out.compute_pools[0].memory_per_node.__dict__)
-        pprint(cim_out.compute_pools[0].memory_per_node.volume)
+        pprint(cim_out.when_used)
+        pprint(cim_out.when_used.__dict__)
+        pprint(cim_out.online_documentation)
+        pprint(cim_out.online_documentation[0].__dict__)
 
-        # Validate the CIM document
-        # TODO invalid, fix this!
+        # Validate the CIM document - there should not be any errors
         if not pyesdoc.is_valid(cim_out):
             for err in pyesdoc.validate(cim_out):
                 print(err)
@@ -828,10 +845,7 @@ if __name__ == '__main__':
         # Test serlialisation of the machine doc...
         j = pyesdoc.encode(cim_out, "json")
         assert json.loads(j)
-        # TODO decoding broken below...
-        # assert isinstance(pyesdoc.decode(j, "json"), cim.Machine)
+        assert isinstance(pyesdoc.decode(j, "json"), cim.Machine)
 
         x = pyesdoc.encode(cim_out, "xml")
-        # TODO, fix XML decoding errors like:
-        # "Scalar decoding error 2.7 GHz <type 'float'>"
         assert isinstance(pyesdoc.decode(x, "xml"), cim.Machine)
