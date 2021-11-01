@@ -1,5 +1,5 @@
 """
-.. module:: init_machines_xls.py
+.. module:: init_xls.py
    :license: GPL/CeCIL
    :platform: Unix, Windows
    :synopsis: Initialises CMIP6 machines spreadsheets.
@@ -9,6 +9,7 @@
    Sadie Bartholomew <sadie.bartholomew@ncas.ac.uk>
 
 """
+
 import argparse
 import os
 import shutil
