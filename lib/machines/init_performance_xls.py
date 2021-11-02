@@ -22,6 +22,14 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from lib.utils import io_mgr, logger, vocabs, constants
 
 
+MACHINE_PLACEHOLDER = "<machine name>"
+MODEL_PLACEHOLDER = "<model name>"
+REALM_PLACEHOLDER = "<realm name>"
+
+AGGREGATE_WS_NAME = "Aggregate for <model name> on <machine name>"
+REALM_WS_NAME = "<realm name> of <model name> on <machine name>"
+
+
 # Define command line argument parser.
 _ARGS = argparse.ArgumentParser(
     "Initialises CMIP6 per-machine, per-model performance spreadsheets.")
@@ -48,17 +56,78 @@ def copy_cell(sheet, cell_to_copy_to, cell_to_copy_from):
 
 def set_institute_name_in_xls(institution, spreadsheet):
     """Write institute name into all relevant worksheets and their titles."""
-    pass
+    long_name = institution.data["name"].encode()
+    short_name = institution.canonical_name.upper().encode()
+
+    # Set name in front page worksheet
+    frontis_sheet = spreadsheet["Frontis"]
+    frontis_sheet["B4"] = "{} ({})".format(
+        institution.data["name"].encode(),  # long name
+        institution.canonical_name.upper().encode(),  # short name
+    )
 
 
-def set_machine_name_in_xls(spreadsheet):
+def set_machine_name_in_xls(machine_name, spreadsheet):
     """Write machine name into all relevant worksheets and their titles."""
-    pass
+
+    # Set name in front page worksheet
+    frontis_sheet = spreadsheet["Frontis"]
+    frontis_sheet["B5"] = machine_name
+
+    # Set name in title of aggregate worksheet
+    aggregate_ws = spreadsheet[AGGREGATE_WS_NAME]
+    aggregate_title = AGGREGATE_WS_NAME.replace(
+        MACHINE_PLACEHOLDER, machine_name)
+    aggregate_ws.title = aggregate_title
+
+    # Set name in title of realm worksheet (copied for each realm)
+    realm_ws = spreadsheet[REALM_WS_NAME]
+    realm_title = REALM_WS_NAME.replace(MACHINE_PLACEHOLDER, machine_name)
+    realm_ws.title = realm_title
+
+    # Set name within cells inside the aggregate and realm template worksheets
+    for cell in ["B1", "B9", "B13"]:
+        aggregate_name_answer = aggregate_ws[cell].value
+        aggregate_ws[cell] = aggregate_name_answer.replace(
+            MACHINE_PLACEHOLDER, machine_name)
+        realm_name_answer = realm_ws[cell].value
+        realm_ws[cell] = realm_name_answer.replace(
+            MACHINE_PLACEHOLDER, machine_name)
+
+    # Must store and return these in this case so we can further update them
+    # to replace the model name placeholder with the model name.
+    return (aggregate_title, realm_title)
 
 
-def set_model_name_in_xls(spreadsheet, aggregate_ws_name, realm_ws_name):
+def set_model_name_in_xls(
+        model_name, spreadsheet, aggregate_ws_name, realm_ws_name):
     """Write model name into all relevant worksheets and their titles."""
-    pass
+    # Set name in front page worksheet
+    frontis_sheet = spreadsheet["Frontis"]
+    frontis_sheet["B6"] = model_name
+
+    # Set name in title of aggregate worksheet
+    aggregate_ws = spreadsheet[aggregate_ws_name]
+    aggregate_title = aggregate_ws_name.replace(MODEL_PLACEHOLDER, model_name)
+    aggregate_ws.title = aggregate_title
+
+    # Set name in title of realm worksheet (copied for each realm)
+    realm_ws = spreadsheet[realm_ws_name]
+    realm_title = realm_ws_name.replace(MODEL_PLACEHOLDER, model_name)
+    realm_ws.title = realm_title
+
+    # Set name within cells inside the aggregate and realm template worksheets
+    for cell in ["B1", "B9", "B17"]:
+        aggregate_name_answer = aggregate_ws[cell].value
+        aggregate_ws[cell] = aggregate_name_answer.replace(
+            MODEL_PLACEHOLDER, model_name)
+        realm_name_answer = realm_ws[cell].value
+        realm_ws[cell] = realm_name_answer.replace(
+            MODEL_PLACEHOLDER, model_name)
+
+    # Must store and return these in this case so we can refer to the
+    # worksheets later (this requires knowledge of their titles).
+    return (aggregate_title, realm_title)
 
 
 def set_realm_name_in_xls(spreadsheet, realm_ws_name, realm_name):
@@ -107,10 +176,10 @@ def _main(args):
                 #   1. Set the applicable institute, machine and model names
                 set_institute_name_in_xls(institution, generic_template)
                 aggregate_ws_title, realm_ws_title = set_machine_name_in_xls(
-                    generic_template)
+                    machine, generic_template)
 
                 aggregate_ws_title, realm_ws_title = set_model_name_in_xls(
-                    generic_template, aggregate_ws_title, realm_ws_title
+                    model, generic_template, aggregate_ws_title, realm_ws_title
                 )
 
                 #   2. Set a list of all applicable experiments as drop-down
