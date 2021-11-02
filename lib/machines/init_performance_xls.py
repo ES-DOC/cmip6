@@ -47,38 +47,38 @@ def copy_cell(sheet, cell_to_copy_to, cell_to_copy_from):
 
 
 def set_institute_name_in_xls(institution, spreadsheet):
-    """TODO."""
+    """Write institute name into all relevant worksheets and their titles."""
     pass
 
 
 def set_machine_name_in_xls(spreadsheet):
-    """TODO."""
+    """Write machine name into all relevant worksheets and their titles."""
     pass
 
 
 def set_model_name_in_xls(spreadsheet, aggregate_ws_name, realm_ws_name):
-    """TODO."""
+    """Write model name into all relevant worksheets and their titles."""
     pass
 
 
 def set_realm_name_in_xls(spreadsheet, realm_ws_name, realm_name):
-    """TODO."""
-    pass
-
-
-def format_applicable_experiments(institution):
-    """TODO."""
-    pass
-
-
-def set_applicable_experiments_in_xls(institution, spreadsheet):
-    """TODO."""
-    format_applicable_experiments(institution)
+    """Write realm name into all relevant worksheets and their titles."""
     pass
 
 
 def create_tab_for_all_realms(spreadsheet, realm_ws_name):
-    """TODO."""
+    """Create one fully-formatted realm worksheet for every possible realm."""
+    pass
+
+
+def format_applicable_experiments(institution):
+    """Pre-format applicable experiments to use in a drop-down list."""
+    pass
+
+
+def set_applicable_experiments_in_xls(institution, spreadsheet):
+    """Write drop-down list of applicable experiments into aggregate tabs."""
+    format_applicable_experiments(institution)
     pass
 
 
