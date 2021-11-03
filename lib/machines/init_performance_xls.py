@@ -132,12 +132,36 @@ def set_model_name_in_xls(
 
 def set_realm_name_in_xls(spreadsheet, realm_ws_name, realm_name):
     """Write realm name into all relevant worksheets and their titles."""
-    pass
+    # Set name in title of realm worksheet
+    realm_ws = spreadsheet[realm_ws_name]
+    realm_title = realm_ws_name.replace(REALM_PLACEHOLDER, realm_name)
+    realm_ws.title = realm_title.rstrip(" Copy")
+
+    # Set name within cells inside the aggregate and realm template worksheets
+    for cell in ["B1", "B9", "B23"]:
+        realm_name_answer = realm_ws[cell].value
+        realm_ws[cell] = realm_name_answer.replace(
+            REALM_PLACEHOLDER, realm_name)
+
+    # Return new title to use for copying worksheets later
+    return realm_title
 
 
-def create_tab_for_all_realms(spreadsheet, realm_ws_name):
+def create_tab_for_all_realms(all_realm_names, spreadsheet, realm_ws_name):
     """Create one fully-formatted realm worksheet for every possible realm."""
-    pass
+    # Get the realm worksheet template ready to duplicate for each realm
+    realm_ws_template = spreadsheet[realm_ws_name]
+
+    for realm_name in all_realm_names:
+        # Create a copy of the template...
+        new_realm_ws = spreadsheet.copy_worksheet(realm_ws_template)
+        # ... and customise the copy to the specific realm.
+        # Don't strip 'Copy' from the end of the WS name until later to
+        # avoid overriding the original template and trouble from that...
+        set_realm_name_in_xls(spreadsheet, new_realm_ws.title, realm_name)
+
+    # Finally delete the original placeholder worksheet which is still there
+    spreadsheet.remove(realm_ws_template)
 
 
 def format_applicable_experiments(institution):
@@ -189,7 +213,9 @@ def _main(args):
                     institution, generic_template)
 
                 #   3. Duplicate tabs and tag for every possible realm
-                create_tab_for_all_realms(generic_template, realm_ws_title)
+                all_realm_names = []  # TODO SADIE get all realms
+                create_tab_for_all_realms(
+                    all_realm_names, generic_template, realm_ws_title)
 
                 # Close template and save customised XLS to a new XLS file
                 generic_template.close()
