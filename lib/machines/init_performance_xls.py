@@ -130,7 +130,7 @@ def set_model_name_in_xls(
     return (aggregate_title, realm_title)
 
 
-def set_realm_name_in_xls(spreadsheet, realm_ws_name, realm_name):
+def set_realm_name_in_xls(realm_name, spreadsheet, realm_ws_name):
     """Write realm name into all relevant worksheets and their titles."""
     # Set name in title of realm worksheet
     realm_ws = spreadsheet[realm_ws_name]
@@ -158,7 +158,7 @@ def create_tab_for_all_realms(all_realm_names, spreadsheet, realm_ws_name):
         # ... and customise the copy to the specific realm.
         # Don't strip 'Copy' from the end of the WS name until later to
         # avoid overriding the original template and trouble from that...
-        set_realm_name_in_xls(spreadsheet, new_realm_ws.title, realm_name)
+        set_realm_name_in_xls(realm_name, spreadsheet, new_realm_ws.title)
 
     # Finally delete the original placeholder worksheet which is still there
     spreadsheet.remove(realm_ws_template)
