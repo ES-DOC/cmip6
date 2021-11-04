@@ -4,13 +4,21 @@
 function _main()
 {
 	local SPECIALIZATION
+	local SPECIALIZATION_FILE
+	local SPECIALIZATION_FILES
 
 	log "syncing py files ..."
-	rm "$CMIP6_HOME"/repos/libs/esdoc-py-client/pyesdoc/mp/specializations/cmip6/*.py
+	if [ -d "$CMIP6_HOME/repos/libs/esdoc-py-client/pyesdoc/mp/specializations/cmip6" ]
+	then
+		rm -rf "$CMIP6_HOME/repos/libs/esdoc-py-client/pyesdoc/mp/specializations/cmip6"
+	fi
+	mkdir "$CMIP6_HOME/repos/libs/esdoc-py-client/pyesdoc/mp/specializations/cmip6"
 	for SPECIALIZATION in "${CMIP6_SPECIALIZATIONS[@]}"
 	do
-		cp "$CMIP6_HOME"/repos/specializations/cmip6-specializations-"$SPECIALIZATION"/"$SPECIALIZATION"*.py 
-		   "$CMIP6_HOME"/repos/libs/esdoc-py-client/pyesdoc/mp/specializations/cmip6
+		SPECIALIZATION_FILES=($(ls "$CMIP6_HOME/repos/specializations/cmip6-specializations-$SPECIALIZATION/$SPECIALIZATION"*".py"))
+		for SPECIALIZATION_FILE in "${SPECIALIZATION_FILES[@]}"; do
+			cp "$SPECIALIZATION_FILE" "$CMIP6_HOME/repos/libs/esdoc-py-client/pyesdoc/mp/specializations/cmip6"
+		done
 	done
 
 	log "syncing csv files ..."

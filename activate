@@ -84,7 +84,7 @@ _reset_experiments()
 	cmip6-experiments-write-d3
 	cmip6-experiments-archive-cim-documents
 }
-alias cmip6-reset-experiments=_reset_experiments
+alias cmip6-experiments-reset=_reset_experiments
 
 # ... institutes
 alias cmip6-institutes-list='exec_cmd institutes-list institutes/list.sh'
