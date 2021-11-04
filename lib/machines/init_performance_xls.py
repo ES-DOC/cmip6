@@ -175,6 +175,28 @@ def set_applicable_experiments_in_xls(institution, spreadsheet):
     pass
 
 
+def customise_performance_template(
+        spreadsheet, institution_name, machine_name, model_name):
+    """Write out input details to customise the performance template."""
+    # Customise the template appropriately to the given institute:
+    #    1. Set the applicable institute, machine and model names
+    set_institute_name_in_xls(institution_name, spreadsheet)
+    aggregate_ws_title, realm_ws_title = set_machine_name_in_xls(
+        machine_name, spreadsheet)
+
+    aggregate_ws_title, realm_ws_title = set_model_name_in_xls(
+        model_name, spreadsheet, aggregate_ws_title, realm_ws_title)
+
+    #    2. Set a list of all applicable experiments as drop-down
+    #       list for question 1.1.5 for the 'aggregate'
+    #       performance tabs.
+    set_applicable_experiments_in_xls(institution_name, spreadsheet)
+
+    #    3. Duplicate tabs and tag for every possible realm
+    all_realm_names = []  # TODO SADIE get all realms
+    create_tab_for_all_realms(all_realm_names, spreadsheet, realm_ws_title)
+
+
 def _main(args):
     """Main entry point.
 
@@ -194,28 +216,10 @@ def _main(args):
         for machine in institution_machines:
             all_models_run_on_machine = []  # TODO SADIE
             for model in all_models_run_on_machine:
+                # Open the template and customise it to the specific loop vars
                 generic_template = load_workbook(filename=template_name)
-
-                # Customise the template appropriately to the given institute:
-                #   1. Set the applicable institute, machine and model names
-                set_institute_name_in_xls(institution, generic_template)
-                aggregate_ws_title, realm_ws_title = set_machine_name_in_xls(
-                    machine, generic_template)
-
-                aggregate_ws_title, realm_ws_title = set_model_name_in_xls(
-                    model, generic_template, aggregate_ws_title, realm_ws_title
-                )
-
-                #   2. Set a list of all applicable experiments as drop-down
-                #      list for question 1.1.5 for the 'aggregate'
-                #      performance tabs.
-                set_applicable_experiments_in_xls(
-                    institution, generic_template)
-
-                #   3. Duplicate tabs and tag for every possible realm
-                all_realm_names = []  # TODO SADIE get all realms
-                create_tab_for_all_realms(
-                    all_realm_names, generic_template, realm_ws_title)
+                customise_performance_template(
+                    generic_template, institution, machine, model)
 
                 # Close template and save customised XLS to a new XLS file
                 generic_template.close()
