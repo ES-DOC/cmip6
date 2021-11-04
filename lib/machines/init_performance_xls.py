@@ -21,6 +21,11 @@ from openpyxl.worksheet.datavalidation import DataValidation
 
 from lib.utils import io_mgr, logger, vocabs, constants
 
+# TODO: import:
+# get_institute_json_mapping [new function to make]
+# get_applicable_models
+# get_applicable_experiments
+
 
 MACHINE_PLACEHOLDER = "<machine name>"
 MODEL_PLACEHOLDER = "<model name>"
@@ -164,15 +169,33 @@ def create_tab_for_all_realms(all_realm_names, spreadsheet, realm_ws_name):
     spreadsheet.remove(realm_ws_template)
 
 
-def format_applicable_experiments(institution):
+def formatted_applicable_experiments(json_mapping_to_questions):
     """Pre-format applicable experiments to use in a drop-down list."""
-    pass
+    appl_exps_dict = get_applicable_experiments(json_mapping_to_questions)
+
+    # Applicable experiments are stored in a dict by MIP key, but only
+    # need the set of all applicable experiments, so flatten to set
+    set_of_appl_exps = {
+        exp for exps in appl_exps_dict.itervalues() for exp in exps}
+
+    return set_of_appl_exps
 
 
-def set_applicable_experiments_in_xls(institution, spreadsheet):
+def set_applicable_experiments_in_xls(
+        applicable_experiments, spreadsheet, aggregate_ws_name):
     """Write drop-down list of applicable experiments into aggregate tabs."""
-    format_applicable_experiments(institution)
-    pass
+    appl_exps_as_comma_delim_string = ", ".join(applicable_experiments)
+    # Note this requires string enclosed in quotes internally
+    cell_formula = '"{}"'.format(appl_exps_as_comma_delim_string)
+
+    aggregate_ws = spreadsheet[aggregate_ws_name]
+    # Clear the placeholder value in the answer cell
+    aggregate_ws["B27"].value = None
+    # Add the drop-down with the available options to that cell
+    appl_exps_dropdown = DataValidation(
+        type="list", formula1=cell_formula, allow_blank=True)
+    aggregate_ws.add_data_validation(appl_exps_dropdown)
+    appl_exps_dropdown.add("B27")
 
 
 def customise_performance_template(
@@ -212,14 +235,17 @@ def _main(args):
 
     # Write out a customised template file for every institute
     for institution in vocabs.get_institutes(args.institution_id):
-        institution_machines = []  # TODO SADIE
-        for machine in institution_machines:
-            all_models_run_on_machine = []  # TODO SADIE
+        # TODO: hook up to grab machine JSON mapped to questions here
+        institute_json_map = get_institute_json_mapping(institution)
+        for machine, machine_json_map in institute_json_map.items():
+            all_models_run_on_machine = get_applicable_models(machine_json_map)
+            appl_exps = formatted_applicable_experiments(machine_json_map)
+
             for model in all_models_run_on_machine:
                 # Open the template and customise it to the specific loop vars
                 generic_template = load_workbook(filename=template_name)
                 customise_performance_template(
-                    generic_template, institution, machine, model)
+                    generic_template, institution, machine, model, appl_exps)
 
                 # Close template and save customised XLS to a new XLS file
                 generic_template.close()
