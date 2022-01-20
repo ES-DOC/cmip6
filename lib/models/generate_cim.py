@@ -183,6 +183,9 @@ def _map_model_type(i, s):
     """Returns a mapped model type.
 
     """
+    # Workaround applied as a quick fix to rectify a specific inaccurate
+    # model type reported by the CMCC liaison. For context, see:
+    # https://github.com/ES-DOC/cmip6/issues/15
     if i.canonical_name == "cmcc":
         return "ESM"
     return "GCM"
