@@ -172,11 +172,20 @@ def _map_model(i, s, accessors):
     m.activity_properties = _map_model_activity_properties(accessors) or []
     m.canonical_id = s.canonical_name
     m.key_properties = _map_model_key_properties(accessors)
-    m.model_type = 'GCM'
+    m.model_type = _map_model_type(i, s)
     m.name = s.canonical_name.upper()
     m.realms = _map_realms(accessors)
 
     return m if (m.activity_properties or m.key_properties or m.realms) else None
+
+
+def _map_model_type(i, s):
+    """Returns a mapped model type.
+
+    """
+    if i.canonical_name == "cmcc":
+        return "ESM"
+    return "GCM"
 
 
 def _map_model_activity_properties(accessors):
