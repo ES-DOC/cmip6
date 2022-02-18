@@ -19,6 +19,8 @@ from openpyxl import load_workbook
 from openpyxl.styles import NamedStyle, Font, PatternFill, Alignment
 from openpyxl.worksheet.datavalidation import DataValidation
 
+import pyessv
+
 from lib.utils import io_mgr, logger, vocabs, constants
 
 from generate_cim_via_json import (
@@ -199,6 +201,12 @@ def set_applicable_experiments_in_xls(
     appl_exps_dropdown.add("B27")
 
 
+def get_all_cmip6_realm_names():
+    """Return a list containing the names of all CMIP6 realms as strings."""
+    cmip6_realms = pyessv.WCRP.cmip6.get_source_realms()
+    return [r.name for r in cmip6_realms.terms]
+
+
 def customise_performance_template(
         spreadsheet, institution_name, machine_name, model_name):
     """Write out input details to customise the performance template."""
@@ -217,7 +225,7 @@ def customise_performance_template(
     set_applicable_experiments_in_xls(institution_name, spreadsheet)
 
     #    3. Duplicate tabs and tag for every possible realm
-    all_realm_names = []  # TODO SADIE get all realms
+    all_realm_names = get_all_cmip6_realm_names()
     create_tab_for_all_realms(all_realm_names, spreadsheet, realm_ws_title)
 
 
@@ -231,8 +239,6 @@ def _main(args):
 
     # Take generic template ready to process with institute-specific info.
     template_name = args.xls_template
-    # TODO: override for testing, remove this line at end as gets via CLI
-    template_name = "templates/performance.xlsx"
 
     # Write out a customised template file for every institute
     for institution in vocabs.get_institutes(args.institution_id):
