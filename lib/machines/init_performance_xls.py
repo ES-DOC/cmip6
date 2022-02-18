@@ -21,10 +21,11 @@ from openpyxl.worksheet.datavalidation import DataValidation
 
 from lib.utils import io_mgr, logger, vocabs, constants
 
-# TODO: import:
-# get_institute_json_mapping [new function to make]
-# get_applicable_models
-# get_applicable_experiments
+from generate_cim_via_json import (
+    get_applicable_models,
+    get_applicable_experiments,
+    get_institute_json_mapping,
+)
 
 
 MACHINE_PLACEHOLDER = "<machine name>"
@@ -235,7 +236,6 @@ def _main(args):
 
     # Write out a customised template file for every institute
     for institution in vocabs.get_institutes(args.institution_id):
-        # TODO: hook up to grab machine JSON mapped to questions here
         institute_json_map = get_institute_json_mapping(institution)
         for machine, machine_json_map in institute_json_map.items():
             all_models_run_on_machine = get_applicable_models(machine_json_map)

@@ -577,6 +577,12 @@ def get_applicable_experiments(intermediate_dict):
     return applicable_exps
 
 
+def get_institute_json_mapping():
+    """TODO."""
+    # Not yet implemented. Follow-on PR will add this.
+    pass
+
+
 # Main entry point.
 if __name__ == '__main__':
     # Locate and open template
