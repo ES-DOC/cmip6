@@ -89,6 +89,24 @@ def get_machines_spreadsheet(institution):
     return os.path.join(path, fname)
 
 
+def get_performance_folder(institution):
+    """Returns path to an institute's machine performance directory.
+
+    """
+    return get_folder((institution, "cmip6", "performance"))
+
+
+def get_performance_spreadsheet(institution, machine, model):
+    """Returns path to performance xls file for institute's machine and model.
+
+    """
+    fname = "cmip6_performance_of_{}_on_{}_{}.xlsx".format(
+        model, institution.canonical_name, machine)
+    path = get_performance_folder(institution)
+
+    return os.path.join(path, fname)
+
+
 def get_institute_folder(institution):
     """Returns path to an institute's cmip6 directory.
 
