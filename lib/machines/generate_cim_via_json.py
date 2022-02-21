@@ -21,7 +21,7 @@ from pyesdoc.ontologies.cim import v2 as cim
 
 INSTITUTE = "an institute"  # TODO: hook up to CLI
 
-PRINT_WARNINGS = False
+PRINT_WARNINGS = False  # TODO: incorporate into the logging system
 
 LABEL_COLUMN = 0  # i.e. index in A-Z of columns as tuple, so "A"
 INPUT_COLUMN = 1  # i.e. "B"
@@ -265,7 +265,7 @@ QUESTIONS_TO_CIM_MAPPING = {
 
 
 def get_ws_questions_to_input_cells_mapping():
-    """TODO."""
+    """Return the mapping between question labels and worksheet input cells."""
     input_labels = WS_QUESTIONS_TO_INPUT_CELLS_MAPPING.copy()
 
     # Extend the list with any potential labels for the questions:
@@ -282,7 +282,7 @@ def get_ws_questions_to_input_cells_mapping():
 
 
 def get_machine_tabs(spreadsheet):
-    """TODO."""
+    """Return a list of all machine tab names in the machine worksheet."""
     all_machine_tabs = []
 
     # Don't rely on names having 'Machine X' format as that is not certain and
@@ -296,7 +296,7 @@ def get_machine_tabs(spreadsheet):
 
 
 def find_input_cells(spreadsheet_tab, input_labels):
-    """TODO."""
+    """Find and return the input cells corresponding to the question labels."""
     label_values = {
         ".".join(str(subsec) for subsec in label): offset for label, offset in
         input_labels.items()
@@ -371,7 +371,7 @@ def find_input_cells(spreadsheet_tab, input_labels):
 
 
 def extract_inputs_at_input_cells(input_cells, spreadsheet_tab):
-    """TODO."""
+    """Extract and return as a list values at the given input cells."""
     values = []
     if not isinstance(input_cells, list):
         input_cells = [input_cells]
@@ -391,7 +391,7 @@ def extract_inputs_at_input_cells(input_cells, spreadsheet_tab):
 
 
 def get_top_cell_model_or_exp_name(input_cells, spreadsheet_tab):
-    """TODO.
+    """Return the name of the topmost model or experiment input to the cells.
 
     In all such cases, the model or experiment name is at an offset of
     zero above the first input cell, i.e. directly above it, so note the
@@ -408,7 +408,7 @@ def get_top_cell_model_or_exp_name(input_cells, spreadsheet_tab):
 
 
 def convert_tab_to_dict(spreadsheet_tab):
-    """TODO."""
+    """Return the full dictionary of inputs extracted from a machine tab."""
     all_input_cells = find_input_cells(
         spreadsheet_tab, get_ws_questions_to_input_cells_mapping())
 
@@ -465,7 +465,7 @@ def convert_tab_to_dict(spreadsheet_tab):
 
 def convert_str_type_to_cim_type(
         dicts_of_inputs, error_when_fail_type_conv=False, _print=False):
-    """TODO."""
+    """Convert a string to the type required by the CIM."""
     inputs_with_cim_type = []
 
     for input_dict in dicts_of_inputs:
@@ -512,7 +512,10 @@ def init_machine_cim(
         set_partition=False, two_compute_pools=True, two_storage_pools=True,
         online_docs_given=True
 ):
-    """TODO."""
+    """Initialise the CIM document for a CMIP6 Machine.
+
+    Only up to two compute pools and storage pools may be specified.
+    """
     kwargs = {
         "project": "CMIP6",
         "source": "spreadsheet",
@@ -554,12 +557,15 @@ def init_machine_cim(
 
 
 def convert_question_number_tuple_to_str(q_no):
-    """TODO."""
+    """Convert the tuple representing a question number into a string.
+
+    Inverse to `convert_question_number_str_to_tuple`.
+    """
     return ".".join([str(_int) for _int in q_no])
 
 
 def convert_question_number_str_to_tuple(q_no):
-    """TODO.
+    """Convert the string representing a question number into a tuple.
 
     Inverse to `convert_question_number_tuple_to_str`.
     """
@@ -567,8 +573,7 @@ def convert_question_number_str_to_tuple(q_no):
 
 
 def get_inputs_and_mapping_to_cim(inputs_by_question_number_json):
-    """TODO."""
-    # Change tuple of int question number labels to dot-delimited string
+    """Calculate the mapping of question numbers to CIM components."""
     questions_to_cim_mapping_str = {
         convert_question_number_tuple_to_str(q_no): val for q_no, val in
         QUESTIONS_TO_CIM_MAPPING.items()
@@ -577,7 +582,7 @@ def get_inputs_and_mapping_to_cim(inputs_by_question_number_json):
 
 
 def set_cim_component(q_no, component, attribute_to_set, value_to_set):
-    """TODO."""
+    """Set components on the CIM document to register the question answer."""
     q_no_tuple = convert_question_number_str_to_tuple(q_no)
     if q_no_tuple in WS_QUESTIONS_WITH_ASSOCIATIONS:  # create an association
         cim_object = getattr(cim, WS_QUESTIONS_WITH_ASSOCIATIONS[q_no_tuple])
@@ -592,7 +597,7 @@ def set_cim_component(q_no, component, attribute_to_set, value_to_set):
 
 def get_machine_doc(
         inputs_by_question_number_json, two_c_pools, two_s_pools, docs_given):
-    """TODO."""
+    """Create and return the completed CIM document for a CMIP6 Machine."""
 
     # Inititate machine CIM document
     # TODO: manage multiple partitions via set_partition flag kwarg
@@ -685,7 +690,7 @@ def get_machine_doc(
 
 
 def generate_intermediate_dict_outputs(machines_spreadsheet):
-    """TODO."""
+    """Generate an intermediate dictionary for all machines per institute."""
     intermediate_dict_outputs = []
     tabs = get_machine_tabs(machines_spreadsheet)
     for machine_tab in tabs:
@@ -695,7 +700,7 @@ def generate_intermediate_dict_outputs(machines_spreadsheet):
 
 def generate_outputs(
         machine_dict, two_c_pools, two_s_pools, docs_given, _print=False):
-    """TODO."""
+    """Generate and return all relevant outputs from a machine worksheet."""
     # Get the machine CIM document and applicable models and experiments
     cim_doc = get_machine_doc(
         machine_dict, two_c_pools, two_s_pools, docs_given)
@@ -709,7 +714,7 @@ def generate_outputs(
 
 
 def filter_out_excess_pool(intermediate_dicts, q_no_start):
-    """TODO."""
+    """Filter any excess storage and/or compute pools from the dictionary."""
     filtered_dicts = []
 
     # Determine if a second pool has been described
@@ -739,7 +744,7 @@ def filter_out_excess_pool(intermediate_dicts, q_no_start):
 
 
 def get_applicable_models(intermediate_dict):
-    """TODO."""
+    """Return all models applicable to the given institute as a list."""
     model_appl_answers = {
         q_no: q_ans for (q_no, q_ans) in intermediate_dict.items()
         if q_no.startswith("1.8")
@@ -764,7 +769,7 @@ def get_applicable_models(intermediate_dict):
 
 
 def get_applicable_experiments(intermediate_dict):
-    """TODO."""
+    """Return all experiments applicable to the given institute as a list."""
     exp_appl_answers = {
         q_no: q_ans for (q_no, q_ans) in intermediate_dict.items()
         if q_no.startswith("1.9")
@@ -793,13 +798,13 @@ def get_applicable_experiments(intermediate_dict):
 
 
 def get_institute_json_mapping():
-    """TODO."""
+    """Return JSON mapping question numbers to inputs for all machines."""
     # Not yet implemented. Follow-on PR will add this.
     pass
 
 
 def convert_ws_to_inputs(ws_location):
-    """TODO."""
+    """Return all processed inputs for a given machine worksheet."""
     # Locate and open template
     open_spreadsheet = load_workbook(filename=ws_location)
 
