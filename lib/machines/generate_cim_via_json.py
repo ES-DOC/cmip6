@@ -21,7 +21,41 @@ from pyesdoc.ontologies.cim import v2 as cim
 from lib.utils import logger
 
 
-INSTITUTE = "an institute"  # TODO: hook up to CLI
+# Define command line argument parser.
+_ARGS = argparse.ArgumentParser(
+    "Generates a CMIP6 CIM v2.2 document for every machine of the institute.")
+_ARGS.add_argument(
+    "--spreadsheet",
+    help="Path to the institute's CMIP6 machine worksheet.",
+    dest="spreadsheet_filepath",
+    type=str
+)
+_ARGS.add_argument(
+    "--io-dir",
+    help="Path to a directory into which documents will be written.",
+    dest="io_dir",
+    type=str
+)
+_ARGS.add_argument(
+    "--institution-id",
+    help="An institution identifier",
+    dest="institution_id",
+    type=str
+)
+_ARGS = _ARGS.parse_args()
+
+
+# Validate command line options.
+if not os.path.isfile(_ARGS.spreadsheet_filepath):
+    raise ValueError("Spreadsheet file does not exist")
+if not os.path.isdir(_ARGS.io_dir):
+    raise ValueError(
+        "Archive directory does not exist: {}".format(_ARGS.io_dir))
+
+
+INSTITUTE = _ARGS.institution_id
+WS_IN_PATH = _ARGS.spreadsheet_filepath
+CIM_OUT_PATH = _ARGS.io_dir
 
 LABEL_COLUMN = 0  # i.e. index in A-Z of columns as tuple, so "A"
 INPUT_COLUMN = 1  # i.e. "B"
@@ -834,7 +868,7 @@ def convert_ws_to_inputs(ws_location):
 # Main entry point.
 if __name__ == '__main__':
     inputs, two_c_pools, two_s_pools, has_docs = convert_ws_to_inputs(
-        _ARGS.spreadsheet_filepath)
+        WS_IN_PATH)
 
     # Iterate over all machine tabs to get all sets of outputs
     for index, input_dict in enumerate(inputs):
@@ -853,13 +887,17 @@ if __name__ == '__main__':
             for err in pyesdoc.validate(cim_out):
                 print(err)
 
-        # Test serlialisation of the machine doc...
-        j = pyesdoc.encode(cim_out, "json")
+        # Test serialisation of the machine doc...
+        j = pyesdoc.encode(cim_out, pyesdoc.constants.ENCODING_JSON)
         assert json.loads(j)
-        assert isinstance(pyesdoc.decode(j, "json"), cim.Machine)
+        assert isinstance(
+            pyesdoc.decode(j, pyesdoc.constants.ENCODING_JSON), cim.Machine)
 
-        x = pyesdoc.encode(cim_out, "xml")
-        assert isinstance(pyesdoc.decode(x, "xml"), cim.Machine)
+        x = pyesdoc.encode(cim_out, pyesdoc.constants.ENCODING_XML)
+        assert isinstance(
+            pyesdoc.decode(x, pyesdoc.constants.ENCODING_XML), cim.Machine)
 
-        # CIM document is valid and encoded correctly, so ready to store
-        # TODO
+        # CIM document is valid and can be encoded correctly, so ready to
+        # store it in the specified location as JSON:
+        pyesdoc.write(cim_out, CIM_OUT_PATH, encoding=encoding)
+        print("Machine CIM document successfully written to filesystem.")
