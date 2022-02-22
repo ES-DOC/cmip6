@@ -64,8 +64,8 @@ EMPTY_CELL_MARKER = "NO CELL VALUE SPECIFIED"
 
 # Usually <500, but in case of much cell copying and all exps and models listed
 MAX_ROW = 3100
-MAX_NUMBER_MODELS_PER_INSTITUTE = 140
-MAX_NUMBER_MIPS = 22
+MAX_NUMBER_MODELS_PER_INSTITUTE = 141  # strict upper limit + 1
+MAX_NUMBER_MIPS = 25  # ditto to above
 
 # Tuple keys give digits corresopnding to question labels to match to user
 # inputs, e.g. (1, 1, 1) -> question "1.1.1" or "1.1.1 *", values are offsets,
@@ -85,7 +85,7 @@ WS_QUESTIONS_TO_INPUT_CELLS_MAPPING = {
     (1, 3, 1): 4,
     (1, 3, 2): 2,
 
-    # Compute pools...
+    # Compute pools (second pool to be added by mirroring the first, later)
     # Compute pool 1:
     (1, 4, 1, 1): 2,
     (1, 4, 1, 2): 2,
@@ -108,42 +108,14 @@ WS_QUESTIONS_TO_INPUT_CELLS_MAPPING = {
     (1, 4, 1, 11): 2,
     (1, 4, 1, 12): 2,
     (1, 4, 1, 13): 2,
-    # Compute pool 2:  TODO, auto-gen from first Q set.
-    (1, 4, 2, 1): 2,
-    (1, 4, 2, 2): 2,
-    (1, 4, 2, 3): 4,
-    (1, 4, 2, 4): 2,
-    (1, 4, 2, 5): 2,
-    (1, 4, 2, 6): 2,
-    (1, 4, 2, 7): 2,
-    (1, 4, 2, 8, 1, 1): 2,
-    (1, 4, 2, 8, 1, 2): 2,
-    (1, 4, 2, 8, 1, 3): 4,
-    (1, 4, 2, 8, 2, 1): 2,
-    (1, 4, 2, 8, 2, 2): 2,
-    (1, 4, 2, 8, 2, 3): 4,
-    (1, 4, 2, 8, 3, 1): 2,
-    (1, 4, 2, 8, 3, 2): 2,
-    (1, 4, 2, 8, 3, 3): 4,
-    (1, 4, 2, 9): 2,
-    (1, 4, 2, 10): 2,
-    (1, 4, 2, 11): 2,
-    (1, 4, 2, 12): 2,
-    (1, 4, 2, 13): 2,
 
-    # Storage pools...
+    # Storage pools (second pool to be added by mirroring the first, later)
     # Storage pool 1:
     (1, 5, 1, 1): 2,
     (1, 5, 1, 2): "SPECIAL CASE: 4+",
     (1, 5, 1, 3): 2,
     (1, 5, 1, 4): 4,
     (1, 5, 1, 5): 4,
-    # Storage pool 2: TODO, auto-gen from first Q set.
-    (1, 5, 2, 1): 2,
-    (1, 5, 2, 2): "SPECIAL CASE: 4+",
-    (1, 5, 2, 3): 2,
-    (1, 5, 2, 4): 4,
-    (1, 5, 2, 5): 4,
 
     # Interconnect:
     (1, 6, 1): 2,
@@ -160,7 +132,7 @@ WS_QUESTIONS_TO_INPUT_CELLS_MAPPING = {
     # All (1, 8, 2, N) are processed in below
     # Applicable experiments:
     (1, 9, 1): 2,
-    # All (1, 9, 2, N) is processed in below
+    # All (1, 9, 2, N) are processed in below
 }
 
 # Denotes questions which map to CIM components of non-string type which
@@ -300,7 +272,19 @@ def get_ws_questions_to_input_cells_mapping():
     """Return the mapping between question labels and worksheet input cells."""
     input_labels = WS_QUESTIONS_TO_INPUT_CELLS_MAPPING.copy()
 
-    # Extend the list with any potential labels for the questions:
+    # Add WS questions corresponding to a second compute and storage pool
+    second_pool_qs = {}
+    for q_prefix in [COMPUTE_POOL_2_Q_NOS, STORAGE_POOL_2_Q_NOS]:
+        previous_q_prefix = list(q_prefix[:-1]) + [q_prefix[-1] - 1]
+        for q, val in input_labels.items():
+            q_label_samesize = list(q[:len(q_prefix)])
+            if q_label_samesize == previous_q_prefix:
+                new_q = list(q)  # use original question label, but...
+                new_q[:len(q_prefix)] = q_prefix  # ...change pool label 1 -> 2
+                second_pool_qs[tuple(new_q)] = val  # and add this to the dict
+    input_labels.update(second_pool_qs)  # add all new questions for 2nd pools
+
+    # Extend the list with any potential labels for the questions
     applicable_models_q2 = {
         (1, 8, 2, N): 1 for N in range(
             1, MAX_NUMBER_MODELS_PER_INSTITUTE)
