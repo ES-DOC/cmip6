@@ -18,10 +18,10 @@ from openpyxl import load_workbook
 import pyesdoc
 from pyesdoc.ontologies.cim import v2 as cim
 
+from lib.utils import logger
+
 
 INSTITUTE = "an institute"  # TODO: hook up to CLI
-
-PRINT_WARNINGS = False  # TODO: incorporate into the logging system
 
 LABEL_COLUMN = 0  # i.e. index in A-Z of columns as tuple, so "A"
 INPUT_COLUMN = 1  # i.e. "B"
@@ -29,11 +29,9 @@ INPUT_COLUMN = 1  # i.e. "B"
 EMPTY_CELL_MARKER = "NO CELL VALUE SPECIFIED"
 
 # Usually <500, but in case of much cell copying and all exps and models listed
-MAX_ROW = 600
-
-# Is this (first one) about right? Is a guess based on seen gen'd model lists
-MAX_NUMBER_MODELS_PER_INSTITUTE = 30  # TODO: replace with inst-specific value
-MAX_NUMBER_MIPS = 22  # TODO: replace with inst-specific value
+MAX_ROW = 3100
+MAX_NUMBER_MODELS_PER_INSTITUTE = 140
+MAX_NUMBER_MIPS = 22
 
 # Tuple keys give digits corresopnding to question labels to match to user
 # inputs, e.g. (1, 1, 1) -> question "1.1.1" or "1.1.1 *", values are offsets,
@@ -312,14 +310,13 @@ def find_input_cells(spreadsheet_tab, input_labels):
                 # Handle special cases of input cell(s) offsets:
                 if isinstance(offset, str):
                     case = offset.lstrip("SPECIAL CASE: ")
-                    if PRINT_WARNINGS:
-                        print("Treating a special case for the offset of:",
-                              label, "with rule:", case)
+                    logger.log_warning(
+                        "Treating a special case for the offset of:",
+                        label, "with rule:", case
+                    )
                     if case.endswith("+"):
                         offsets = []
                         check_cell_at_offset = int(case.rstrip("+"))
-
-                        # TODO: WHY IS IT INPUT_COLUMN PLUS 1: SORT IT!
 
                         # For N+, take all cells from N onwards until reach
                         # the first empty one, then stop:
@@ -363,8 +360,8 @@ def find_input_cells(spreadsheet_tab, input_labels):
             if label.startswith("1.9.2.") or label.startswith("1.8.2."):
                 # Numbers not valid in this case, too few objects, so it
                 # we can just skip these...
-                if PRINT_WARNINGS:
-                    print("Inapplicable model or MIP number skipped:", label)
+                logger.log_warning(
+                    "Inapplicable model or MIP number skipped:", label)
 
 
     return label_to_input_cell_mapping
@@ -437,11 +434,10 @@ def convert_tab_to_dict(spreadsheet_tab):
                         final_dict[label] = str(user_input)
                     except:
                         # Python 2 only unicode-escape
-                        if PRINT_WARNINGS:
-                            print(
-                                "WARNING: Python 2 only unicode issue with:",
-                                label
-                            )
+                        logger.log_warning(
+                            "WARNING: Python 2 only unicode issue with:",
+                            label
+                        )
                         final_dict[label] = user_input
         elif label.startswith("1.9.2."):
             if not spreadsheet_tab.cell(
@@ -838,9 +834,7 @@ def convert_ws_to_inputs(ws_location):
 # Main entry point.
 if __name__ == '__main__':
     inputs, two_c_pools, two_s_pools, has_docs = convert_ws_to_inputs(
-        os.path.join(
-            "test-machine-sheets", "cmcc_real_submission.xlsx"
-    ))  # TODO: hook up location to CLI, this WS is just for testing purposes
+        _ARGS.spreadsheet_filepath)
 
     # Iterate over all machine tabs to get all sets of outputs
     for index, input_dict in enumerate(inputs):
@@ -866,3 +860,6 @@ if __name__ == '__main__':
 
         x = pyesdoc.encode(cim_out, "xml")
         assert isinstance(pyesdoc.decode(x, "xml"), cim.Machine)
+
+        # CIM document is valid and encoded correctly, so ready to store
+        # TODO
