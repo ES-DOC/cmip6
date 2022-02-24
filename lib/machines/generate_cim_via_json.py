@@ -18,7 +18,7 @@ from openpyxl import load_workbook
 import pyesdoc
 from pyesdoc.ontologies.cim import v2 as cim
 
-from lib.utils import logger
+from lib.utils import logger, vocabs
 
 
 # Define command line argument parser.
@@ -792,8 +792,11 @@ def get_applicable_experiments(intermediate_dict):
     exp_with_appl = exp_appl_answers.values()
 
     if all_applicable == "ALL":
-        # TODO, requires func from machine spreadsheet processing...
-        pass
+        mips_to_exps = vocabs.get_applicable_mips_with_experiments(INSTITUTE)
+        # Flatten this mapping to MIPs out to set of all relevant experiments
+        applicable_exps = set()
+        for exps in mips_to_exps.values():
+            applicable_exps.update(set(exp for exp in exps))
     elif all_applicable == "SOME":
         # In this case must filter out ones specified as not being applicable
         given_exps = [
