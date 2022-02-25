@@ -57,30 +57,6 @@ def copy_cell(sheet, cell_to_copy_to, cell_to_copy_from):
     sheet[cell_to_copy_to]._style = copy(sheet[cell_to_copy_from]._style)
 
 
-def get_applicable_mips_with_experiments(institution):
-    """Return MIPs applicable to the given institute mapped to experiments."""
-    # First find all of the applicable MIPs for the institute
-    all_applicable_mips = list()
-    for source in vocabs.get_institute_sources(institution):
-        for mip in source.activity_participation:
-            all_applicable_mips.append(mip.encode())
-
-    # Some experiments apply to multiple MIPs, so handle the mapping:
-    exps_to_mips = dict()
-    for exp in vocabs.get_experiments:
-        mips = [mip.encode() for mip in exp.data["activity_id"]]
-        exps_to_mips.update({exp.canonical_name.encode(): mips})
-
-    # Now change the mapping from current exp -> MIP to the required MIP -> exp
-    mips_to_exps = {}
-    for exp, mips in exps_to_mips.items():
-        for mip in mips:
-            if mip in all_applicable_mips:  # filter out non-applicable
-                mips_to_exps.setdefault(mip.encode(), []).append(exp)
-
-    return mips_to_exps
-
-
 def process_enum_options(experiment_list):
     """Process lists of experiments for drop-down box options or text.
 
@@ -254,14 +230,15 @@ def set_applicable_experiments_in_xls(institution, spreadsheet, start_cell):
     machines_sheet.add_data_validation(all_or_some_dropdown)
     all_or_some_dropdown.add("B{}".format(active_row - 10))
 
-    if not get_applicable_mips_with_experiments(institution):
+    if not vocabs.get_applicable_mips_with_experiments(institution):
         manage_no_applicable_items_found(
             machines_sheet, active_row, "MIPs", "1.9")
         return active_row
 
     # Iterate over MIPs to list and tied experiments for each dropdown box
     exps_dropdown = []  # to register separate data alidation items later
-    for mip, exps in get_applicable_mips_with_experiments(institution).items():
+    for mip, exps in vocabs.get_applicable_mips_with_experiments(
+            institution).items():
 
         if section_number != 1:
             # Create new block of three rows: two question rows plus one gap

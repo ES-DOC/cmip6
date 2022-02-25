@@ -133,6 +133,8 @@ alias cmip6-vocabs-write-bash-vars='exec_cmd vocabs-write-bash-vars vocabs/write
 
 # ... machines and performances
 alias cmip6-machines-init-xls='exec_cmd machines-init-xls machines/init_machines_xls.sh $1'
+alias cmip6-machines-generate-cim='exec_cmd machines-generate-cim machines/ $1'
+alias cmip6-performance-init-xls='exec_cmd performance-init-xls machines/init_performances_xls.sh $1'
 
 # ... archives & libs
 alias cmip6-archives-repos-pull='exec_cmd archives-pull utils/pull_archives.sh'

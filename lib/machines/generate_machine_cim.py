@@ -1,5 +1,5 @@
 """
-.. module:: generate_cim_via_json.py
+.. module:: generate_machine_cim.py
    :license: GPL/CeCIL
    :platform: Unix, Windows
    :synopsis: Converts CMIP6 machine spreadsheets to a machine CIM document.
@@ -18,10 +18,44 @@ from openpyxl import load_workbook
 import pyesdoc
 from pyesdoc.ontologies.cim import v2 as cim
 
+from lib.utils import logger, vocabs
 
-INSTITUTE = "an institute"  # TODO: hook up to CLI
 
-PRINT_WARNINGS = False
+# Define command line argument parser.
+_ARGS = argparse.ArgumentParser(
+    "Generates a CMIP6 CIM v2.2 document for every machine of the institute.")
+_ARGS.add_argument(
+    "--spreadsheet",
+    help="Path to the institute's CMIP6 machine worksheet.",
+    dest="spreadsheet_filepath",
+    type=str
+)
+_ARGS.add_argument(
+    "--io-dir",
+    help="Path to a directory into which documents will be written.",
+    dest="io_dir",
+    type=str
+)
+_ARGS.add_argument(
+    "--institution-id",
+    help="An institution identifier",
+    dest="institution_id",
+    type=str
+)
+_ARGS = _ARGS.parse_args()
+
+
+# Validate command line options.
+if not os.path.isfile(_ARGS.spreadsheet_filepath):
+    raise ValueError("Spreadsheet file does not exist")
+if not os.path.isdir(_ARGS.io_dir):
+    raise ValueError(
+        "Archive directory does not exist: {}".format(_ARGS.io_dir))
+
+
+INSTITUTE = _ARGS.institution_id
+WS_IN_PATH = _ARGS.spreadsheet_filepath
+CIM_OUT_PATH = _ARGS.io_dir
 
 LABEL_COLUMN = 0  # i.e. index in A-Z of columns as tuple, so "A"
 INPUT_COLUMN = 1  # i.e. "B"
@@ -29,11 +63,9 @@ INPUT_COLUMN = 1  # i.e. "B"
 EMPTY_CELL_MARKER = "NO CELL VALUE SPECIFIED"
 
 # Usually <500, but in case of much cell copying and all exps and models listed
-MAX_ROW = 600
-
-# Is this (first one) about right? Is a guess based on seen gen'd model lists
-MAX_NUMBER_MODELS_PER_INSTITUTE = 30  # TODO: replace with inst-specific value
-MAX_NUMBER_MIPS = 22  # TODO: replace with inst-specific value
+MAX_ROW = 3100
+MAX_NUMBER_MODELS_PER_INSTITUTE = 141  # strict upper limit + 1
+MAX_NUMBER_MIPS = 25  # ditto to above
 
 # Tuple keys give digits corresopnding to question labels to match to user
 # inputs, e.g. (1, 1, 1) -> question "1.1.1" or "1.1.1 *", values are offsets,
@@ -53,7 +85,7 @@ WS_QUESTIONS_TO_INPUT_CELLS_MAPPING = {
     (1, 3, 1): 4,
     (1, 3, 2): 2,
 
-    # Compute pools...
+    # Compute pools (second pool to be added by mirroring the first, later)
     # Compute pool 1:
     (1, 4, 1, 1): 2,
     (1, 4, 1, 2): 2,
@@ -76,42 +108,14 @@ WS_QUESTIONS_TO_INPUT_CELLS_MAPPING = {
     (1, 4, 1, 11): 2,
     (1, 4, 1, 12): 2,
     (1, 4, 1, 13): 2,
-    # Compute pool 2:  TODO, auto-gen from first Q set.
-    (1, 4, 2, 1): 2,
-    (1, 4, 2, 2): 2,
-    (1, 4, 2, 3): 4,
-    (1, 4, 2, 4): 2,
-    (1, 4, 2, 5): 2,
-    (1, 4, 2, 6): 2,
-    (1, 4, 2, 7): 2,
-    (1, 4, 2, 8, 1, 1): 2,
-    (1, 4, 2, 8, 1, 2): 2,
-    (1, 4, 2, 8, 1, 3): 4,
-    (1, 4, 2, 8, 2, 1): 2,
-    (1, 4, 2, 8, 2, 2): 2,
-    (1, 4, 2, 8, 2, 3): 4,
-    (1, 4, 2, 8, 3, 1): 2,
-    (1, 4, 2, 8, 3, 2): 2,
-    (1, 4, 2, 8, 3, 3): 4,
-    (1, 4, 2, 9): 2,
-    (1, 4, 2, 10): 2,
-    (1, 4, 2, 11): 2,
-    (1, 4, 2, 12): 2,
-    (1, 4, 2, 13): 2,
 
-    # Storage pools...
+    # Storage pools (second pool to be added by mirroring the first, later)
     # Storage pool 1:
     (1, 5, 1, 1): 2,
     (1, 5, 1, 2): "SPECIAL CASE: 4+",
     (1, 5, 1, 3): 2,
     (1, 5, 1, 4): 4,
     (1, 5, 1, 5): 4,
-    # Storage pool 2: TODO, auto-gen from first Q set.
-    (1, 5, 2, 1): 2,
-    (1, 5, 2, 2): "SPECIAL CASE: 4+",
-    (1, 5, 2, 3): 2,
-    (1, 5, 2, 4): 4,
-    (1, 5, 2, 5): 4,
 
     # Interconnect:
     (1, 6, 1): 2,
@@ -128,7 +132,7 @@ WS_QUESTIONS_TO_INPUT_CELLS_MAPPING = {
     # All (1, 8, 2, N) are processed in below
     # Applicable experiments:
     (1, 9, 1): 2,
-    # All (1, 9, 2, N) is processed in below
+    # All (1, 9, 2, N) are processed in below
 }
 
 # Denotes questions which map to CIM components of non-string type which
@@ -265,10 +269,22 @@ QUESTIONS_TO_CIM_MAPPING = {
 
 
 def get_ws_questions_to_input_cells_mapping():
-    """TODO."""
+    """Return the mapping between question labels and worksheet input cells."""
     input_labels = WS_QUESTIONS_TO_INPUT_CELLS_MAPPING.copy()
 
-    # Extend the list with any potential labels for the questions:
+    # Add WS questions corresponding to a second compute and storage pool
+    second_pool_qs = {}
+    for q_prefix in [COMPUTE_POOL_2_Q_NOS, STORAGE_POOL_2_Q_NOS]:
+        previous_q_prefix = list(q_prefix[:-1]) + [q_prefix[-1] - 1]
+        for q, val in input_labels.items():
+            q_label_samesize = list(q[:len(q_prefix)])
+            if q_label_samesize == previous_q_prefix:
+                new_q = list(q)  # use original question label, but...
+                new_q[:len(q_prefix)] = q_prefix  # ...change pool label 1 -> 2
+                second_pool_qs[tuple(new_q)] = val  # and add this to the dict
+    input_labels.update(second_pool_qs)  # add all new questions for 2nd pools
+
+    # Extend the list with any potential labels for the questions
     applicable_models_q2 = {
         (1, 8, 2, N): 1 for N in range(
             1, MAX_NUMBER_MODELS_PER_INSTITUTE)
@@ -282,7 +298,7 @@ def get_ws_questions_to_input_cells_mapping():
 
 
 def get_machine_tabs(spreadsheet):
-    """TODO."""
+    """Return a list of all machine tab names in the machine worksheet."""
     all_machine_tabs = []
 
     # Don't rely on names having 'Machine X' format as that is not certain and
@@ -296,7 +312,7 @@ def get_machine_tabs(spreadsheet):
 
 
 def find_input_cells(spreadsheet_tab, input_labels):
-    """TODO."""
+    """Find and return the input cells corresponding to the question labels."""
     label_values = {
         ".".join(str(subsec) for subsec in label): offset for label, offset in
         input_labels.items()
@@ -312,14 +328,13 @@ def find_input_cells(spreadsheet_tab, input_labels):
                 # Handle special cases of input cell(s) offsets:
                 if isinstance(offset, str):
                     case = offset.lstrip("SPECIAL CASE: ")
-                    if PRINT_WARNINGS:
-                        print("Treating a special case for the offset of:",
-                              label, "with rule:", case)
+                    logger.log_warning(
+                        "Treating a special case for the offset of:",
+                        label, "with rule:", case
+                    )
                     if case.endswith("+"):
                         offsets = []
                         check_cell_at_offset = int(case.rstrip("+"))
-
-                        # TODO: WHY IS IT INPUT_COLUMN PLUS 1: SORT IT!
 
                         # For N+, take all cells from N onwards until reach
                         # the first empty one, then stop:
@@ -363,15 +378,15 @@ def find_input_cells(spreadsheet_tab, input_labels):
             if label.startswith("1.9.2.") or label.startswith("1.8.2."):
                 # Numbers not valid in this case, too few objects, so it
                 # we can just skip these...
-                if PRINT_WARNINGS:
-                    print("Inapplicable model or MIP number skipped:", label)
+                logger.log_warning(
+                    "Inapplicable model or MIP number skipped:", label)
 
 
     return label_to_input_cell_mapping
 
 
 def extract_inputs_at_input_cells(input_cells, spreadsheet_tab):
-    """TODO."""
+    """Extract and return as a list values at the given input cells."""
     values = []
     if not isinstance(input_cells, list):
         input_cells = [input_cells]
@@ -391,7 +406,7 @@ def extract_inputs_at_input_cells(input_cells, spreadsheet_tab):
 
 
 def get_top_cell_model_or_exp_name(input_cells, spreadsheet_tab):
-    """TODO.
+    """Return the name of the topmost model or experiment input to the cells.
 
     In all such cases, the model or experiment name is at an offset of
     zero above the first input cell, i.e. directly above it, so note the
@@ -408,7 +423,7 @@ def get_top_cell_model_or_exp_name(input_cells, spreadsheet_tab):
 
 
 def convert_tab_to_dict(spreadsheet_tab):
-    """TODO."""
+    """Return the full dictionary of inputs extracted from a machine tab."""
     all_input_cells = find_input_cells(
         spreadsheet_tab, get_ws_questions_to_input_cells_mapping())
 
@@ -437,11 +452,10 @@ def convert_tab_to_dict(spreadsheet_tab):
                         final_dict[label] = str(user_input)
                     except:
                         # Python 2 only unicode-escape
-                        if PRINT_WARNINGS:
-                            print(
-                                "WARNING: Python 2 only unicode issue with:",
-                                label
-                            )
+                        logger.log_warning(
+                            "WARNING: Python 2 only unicode issue with:",
+                            label
+                        )
                         final_dict[label] = user_input
         elif label.startswith("1.9.2."):
             if not spreadsheet_tab.cell(
@@ -465,7 +479,7 @@ def convert_tab_to_dict(spreadsheet_tab):
 
 def convert_str_type_to_cim_type(
         dicts_of_inputs, error_when_fail_type_conv=False, _print=False):
-    """TODO."""
+    """Convert a string to the type required by the CIM."""
     inputs_with_cim_type = []
 
     for input_dict in dicts_of_inputs:
@@ -512,7 +526,10 @@ def init_machine_cim(
         set_partition=False, two_compute_pools=True, two_storage_pools=True,
         online_docs_given=True
 ):
-    """TODO."""
+    """Initialise the CIM document for a CMIP6 Machine.
+
+    Only up to two compute pools and storage pools may be specified.
+    """
     kwargs = {
         "project": "CMIP6",
         "source": "spreadsheet",
@@ -554,12 +571,15 @@ def init_machine_cim(
 
 
 def convert_question_number_tuple_to_str(q_no):
-    """TODO."""
+    """Convert the tuple representing a question number into a string.
+
+    Inverse to `convert_question_number_str_to_tuple`.
+    """
     return ".".join([str(_int) for _int in q_no])
 
 
 def convert_question_number_str_to_tuple(q_no):
-    """TODO.
+    """Convert the string representing a question number into a tuple.
 
     Inverse to `convert_question_number_tuple_to_str`.
     """
@@ -567,8 +587,7 @@ def convert_question_number_str_to_tuple(q_no):
 
 
 def get_inputs_and_mapping_to_cim(inputs_by_question_number_json):
-    """TODO."""
-    # Change tuple of int question number labels to dot-delimited string
+    """Calculate the mapping of question numbers to CIM components."""
     questions_to_cim_mapping_str = {
         convert_question_number_tuple_to_str(q_no): val for q_no, val in
         QUESTIONS_TO_CIM_MAPPING.items()
@@ -577,7 +596,7 @@ def get_inputs_and_mapping_to_cim(inputs_by_question_number_json):
 
 
 def set_cim_component(q_no, component, attribute_to_set, value_to_set):
-    """TODO."""
+    """Set components on the CIM document to register the question answer."""
     q_no_tuple = convert_question_number_str_to_tuple(q_no)
     if q_no_tuple in WS_QUESTIONS_WITH_ASSOCIATIONS:  # create an association
         cim_object = getattr(cim, WS_QUESTIONS_WITH_ASSOCIATIONS[q_no_tuple])
@@ -592,7 +611,7 @@ def set_cim_component(q_no, component, attribute_to_set, value_to_set):
 
 def get_machine_doc(
         inputs_by_question_number_json, two_c_pools, two_s_pools, docs_given):
-    """TODO."""
+    """Create and return the completed CIM document for a CMIP6 Machine."""
 
     # Inititate machine CIM document
     # TODO: manage multiple partitions via set_partition flag kwarg
@@ -685,7 +704,7 @@ def get_machine_doc(
 
 
 def generate_intermediate_dict_outputs(machines_spreadsheet):
-    """TODO."""
+    """Generate an intermediate dictionary for all machines per institute."""
     intermediate_dict_outputs = []
     tabs = get_machine_tabs(machines_spreadsheet)
     for machine_tab in tabs:
@@ -695,7 +714,7 @@ def generate_intermediate_dict_outputs(machines_spreadsheet):
 
 def generate_outputs(
         machine_dict, two_c_pools, two_s_pools, docs_given, _print=False):
-    """TODO."""
+    """Generate and return all relevant outputs from a machine worksheet."""
     # Get the machine CIM document and applicable models and experiments
     cim_doc = get_machine_doc(
         machine_dict, two_c_pools, two_s_pools, docs_given)
@@ -709,7 +728,7 @@ def generate_outputs(
 
 
 def filter_out_excess_pool(intermediate_dicts, q_no_start):
-    """TODO."""
+    """Filter any excess storage and/or compute pools from the dictionary."""
     filtered_dicts = []
 
     # Determine if a second pool has been described
@@ -739,7 +758,7 @@ def filter_out_excess_pool(intermediate_dicts, q_no_start):
 
 
 def get_applicable_models(intermediate_dict):
-    """TODO."""
+    """Return all models applicable to the given institute as a list."""
     model_appl_answers = {
         q_no: q_ans for (q_no, q_ans) in intermediate_dict.items()
         if q_no.startswith("1.8")
@@ -764,7 +783,7 @@ def get_applicable_models(intermediate_dict):
 
 
 def get_applicable_experiments(intermediate_dict):
-    """TODO."""
+    """Return all experiments applicable to the given institute as a list."""
     exp_appl_answers = {
         q_no: q_ans for (q_no, q_ans) in intermediate_dict.items()
         if q_no.startswith("1.9")
@@ -773,8 +792,11 @@ def get_applicable_experiments(intermediate_dict):
     exp_with_appl = exp_appl_answers.values()
 
     if all_applicable == "ALL":
-        # TODO, requires func from machine spreadsheet processing...
-        pass
+        mips_to_exps = vocabs.get_applicable_mips_with_experiments(INSTITUTE)
+        # Flatten this mapping to MIPs out to set of all relevant experiments
+        applicable_exps = set()
+        for exps in mips_to_exps.values():
+            applicable_exps.update(set(exp for exp in exps))
     elif all_applicable == "SOME":
         # In this case must filter out ones specified as not being applicable
         given_exps = [
@@ -792,14 +814,27 @@ def get_applicable_experiments(intermediate_dict):
     return applicable_exps
 
 
-def get_institute_json_mapping():
-    """TODO."""
-    # Not yet implemented. Follow-on PR will add this.
-    pass
+def get_all_qs_to_inputs_mapping_for_institute():
+    """Return JSON mapping question numbers to inputs for all machines.
+
+    Note: this function is to facilitate the creation of the second-stage
+    performance spreadsheets based on the inputs to the machine
+    spreadsheet, rather than towards the creation of the machine CIM.
+    """
+    inputs = convert_ws_to_inputs(WS_IN_PATH)[0]
+
+    # Tag each dictionary of inputs from a tab, corresponding to a given
+    # documented machine, with the machine name, to aid processing
+    final_qs_to_inputs_mapping = {}
+    for machine_dict in inputs:
+        machine_name = machine_dict["1.1.1"]  # compulsory q => guaranteed key
+        final_qs_to_inputs_mapping[machine_name] = machine_dict
+
+    return final_qs_to_inputs_mapping
 
 
 def convert_ws_to_inputs(ws_location):
-    """TODO."""
+    """Return all processed inputs for a given machine worksheet."""
     # Locate and open template
     open_spreadsheet = load_workbook(filename=ws_location)
 
@@ -833,9 +868,7 @@ def convert_ws_to_inputs(ws_location):
 # Main entry point.
 if __name__ == '__main__':
     inputs, two_c_pools, two_s_pools, has_docs = convert_ws_to_inputs(
-        os.path.join(
-            "test-machine-sheets", "cmcc_real_submission.xlsx"
-    ))  # TODO: hook up location to CLI, this WS is just for testing purposes
+        WS_IN_PATH)
 
     # Iterate over all machine tabs to get all sets of outputs
     for index, input_dict in enumerate(inputs):
@@ -854,10 +887,17 @@ if __name__ == '__main__':
             for err in pyesdoc.validate(cim_out):
                 print(err)
 
-        # Test serlialisation of the machine doc...
-        j = pyesdoc.encode(cim_out, "json")
+        # Test serialisation of the machine doc...
+        j = pyesdoc.encode(cim_out, pyesdoc.constants.ENCODING_JSON)
         assert json.loads(j)
-        assert isinstance(pyesdoc.decode(j, "json"), cim.Machine)
+        assert isinstance(
+            pyesdoc.decode(j, pyesdoc.constants.ENCODING_JSON), cim.Machine)
 
-        x = pyesdoc.encode(cim_out, "xml")
-        assert isinstance(pyesdoc.decode(x, "xml"), cim.Machine)
+        x = pyesdoc.encode(cim_out, pyesdoc.constants.ENCODING_XML)
+        assert isinstance(
+            pyesdoc.decode(x, pyesdoc.constants.ENCODING_XML), cim.Machine)
+
+        # CIM document is valid and can be encoded correctly, so ready to
+        # store it in the specified location as JSON:
+        pyesdoc.write(cim_out, CIM_OUT_PATH, encoding=encoding)
+        print("Machine CIM document successfully written to filesystem.")

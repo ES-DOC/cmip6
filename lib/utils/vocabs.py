@@ -71,6 +71,29 @@ def get_source_topic(source_id, topic_id):
             return t
 
 
+def get_applicable_mips_with_experiments(institution):
+    """Return MIPs applicable to the given institute mapped to experiments."""
+    # First find all of the applicable MIPs for the institute
+    all_applicable_mips = list()
+    for source in get_institute_sources(institution):
+        for mip in source.activity_participation:
+            all_applicable_mips.append(mip.encode())
+
+    # Some experiments apply to multiple MIPs, so handle the mapping:
+    exps_to_mips = dict()
+    for exp in get_experiments:
+        mips = [mip.encode() for mip in exp.data["activity_id"]]
+        exps_to_mips.update({exp.canonical_name.encode(): mips})
+
+    # Now change the mapping from current exp -> MIP to the required MIP -> exp
+    mips_to_exps = {}
+    for exp, mips in exps_to_mips.items():
+        for mip in mips:
+            if mip in all_applicable_mips:  # filter out non-applicable
+                mips_to_exps.setdefault(mip.encode(), []).append(exp)
+
+    return mips_to_exps
+
 
 # Shorthand.
 get_model_topics = get_source_topics

@@ -26,7 +26,7 @@ from lib.utils import io_mgr, logger, vocabs, constants
 from generate_cim_via_json import (
     get_applicable_models,
     get_applicable_experiments,
-    get_institute_json_mapping,
+    get_all_qs_to_inputs_mapping_for_institute,
 )
 
 
@@ -242,8 +242,9 @@ def _main(args):
 
     # Write out a customised template file for every institute
     for institution in vocabs.get_institutes(args.institution_id):
-        institute_json_map = get_institute_json_mapping(institution)
-        for machine, machine_json_map in institute_json_map.items():
+        institute_inputs_map = get_all_qs_to_inputs_mapping_for_institute(
+            institution)
+        for machine, machine_json_map in institute_inputs_map.items():
             all_models_run_on_machine = get_applicable_models(machine_json_map)
             appl_exps = formatted_applicable_experiments(machine_json_map)
 
