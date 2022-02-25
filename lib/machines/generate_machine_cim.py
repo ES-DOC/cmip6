@@ -1,5 +1,5 @@
 """
-.. module:: generate_cim_via_json.py
+.. module:: generate_machine_cim.py
    :license: GPL/CeCIL
    :platform: Unix, Windows
    :synopsis: Converts CMIP6 machine spreadsheets to a machine CIM document.
