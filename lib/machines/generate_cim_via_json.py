@@ -814,10 +814,23 @@ def get_applicable_experiments(intermediate_dict):
     return applicable_exps
 
 
-def get_institute_json_mapping():
-    """Return JSON mapping question numbers to inputs for all machines."""
-    # Not yet implemented. Follow-on PR will add this.
-    pass
+def get_all_qs_to_inputs_mapping_for_institute():
+    """Return JSON mapping question numbers to inputs for all machines.
+
+    Note: this function is to facilitate the creation of the second-stage
+    performance spreadsheets based on the inputs to the machine
+    spreadsheet, rather than towards the creation of the machine CIM.
+    """
+    inputs = convert_ws_to_inputs(WS_IN_PATH)[0]
+
+    # Tag each dictionary of inputs from a tab, corresponding to a given
+    # documented machine, with the machine name, to aid processing
+    final_qs_to_inputs_mapping = {}
+    for machine_dict in inputs:
+        machine_name = machine_dict["1.1.1"]  # compulsory q => guaranteed key
+        final_qs_to_inputs_mapping[machine_name] = machine_dict
+
+    return final_qs_to_inputs_mapping
 
 
 def convert_ws_to_inputs(ws_location):
