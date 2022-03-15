@@ -900,5 +900,6 @@ if __name__ == '__main__':
 
         # CIM document is valid and can be encoded correctly, so ready to
         # store it in the specified location as JSON:
-        pyesdoc.write(cim_out, CIM_OUT_PATH, encoding=encoding)
+        pyesdoc.write(
+            cim_out, CIM_OUT_PATH, encoding=pyesdoc.constants.ENCODING_JSON)
         print("Machine CIM document successfully written to filesystem.")
